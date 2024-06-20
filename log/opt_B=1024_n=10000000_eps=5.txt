@@ -1,0 +1,15 @@
+epsilon:5
+delta:1e-14
+number of participants:10000000
+domain size:1024
+mu:4509.686217660241
+expected number of message / user:2.8458145688883363
+real number of message / user:2.845332
+L1 error:85904422.61013341
+L2 error:22359100198.65787
+Linf error:980.3724353201687
+50\% error:137.56891169864684
+90\% error:339.68621766008437
+95\% error:407.37243532016873
+99\% error:542.7448706403375
+average error:164.00984888610228

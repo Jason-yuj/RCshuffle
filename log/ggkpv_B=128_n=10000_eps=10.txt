@@ -1,0 +1,12 @@
+epsilon:10
+delta:1e-08
+number of participants:10000
+domain size:128
+real number of message / user:451
+L1 error:260292.86730147077
+L2 error:13087314.914285757
+Linf error:151.7934444240982
+50\% error:26.98535066837576
+90\% error:66.09827259964595
+95\% error:79.46005005188317
+99\% error:101.83476774705491
