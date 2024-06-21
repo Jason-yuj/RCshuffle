@@ -1,9 +1,10 @@
 import random, bisect
 
+
 class Zipfian:
     def __init__(self, alpha):
         self.alpha = alpha
-        self.maxnoise = 65536
+        self.maxnoise = 1024
 
         
         self.accprob = []
@@ -24,12 +25,12 @@ class Zipfian:
         return randnum
 
 n = 10000000
-B = 16777216
-alpha = 3
+B = 1024
+alpha = 1
 
 zipf = Zipfian(alpha)
 zipflist = [[zipf.Generate()] for i in range(n)]
-print (zipflist)
+# print (zipflist)
 file = open("zipf,alpha=" + str(alpha) + ".txt", "w")
 file.write(str(n) + '\n')
 file.write(str(B) + '\n')

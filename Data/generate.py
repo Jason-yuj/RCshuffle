@@ -1,10 +1,14 @@
+import argparse
+import bisect
 import math
+import random
 
 import numpy as np
 
 
+# generate uniform data
 def generate_uniform(n, B):
-    file = open("data.txt", 'w')
+    file = open("uniform.txt", 'w')
     # file.write(str(n)+'\n')
     # file.write(str(B)+'\n')
     for _ in range(n):
@@ -14,49 +18,66 @@ def generate_uniform(n, B):
     file.close()
 
 
-def generate_zipf(n, B):
-    file = open("test.txt", 'w')
-    # file.write(str(n)+'\n')
-    # file.write(str(B)+'\n')
-    i = 0
-    while i <= n:
-        data = np.random.zipf(1.3, 1)
-        if data < B:
-            file.write(str(data[0]) + '\n')
-            i += 1
-        print(i)
+class Zipfian:
+    def __init__(self, alpha):
+        self.alpha = alpha
+        self.maxnoise = 1024
+
+        self.accprob = []
+        cumprob, prob = 0, 0
+
+        for i in range(1, self.maxnoise):
+            prob = 1.0 / pow(i, alpha)
+            cumprob += prob
+            self.accprob.append(cumprob)
+
+        self.largeprob = self.accprob[-1]
+        # print(self.accprob)
+
+    def Generate(self):
+        randness = random.uniform(0, self.largeprob)
+        randnum = bisect.bisect_left(self.accprob, randness) + 1
+        return randnum
+
+
+def gen_zipf(n, B):
+    alpha = 1.5
+    zipf = Zipfian(alpha)
+    zipflist = [[zipf.Generate()] for i in range(n)]
+    # print (zipflist)
+    file = open("zipf.txt", "w")
+    for line in zipflist:
+        file.write(str(line[0]) + '\n')
     print("finish")
     file.close()
 
 
-def dummy():
-    file = open("data1.txt", 'w')
-    # file.write(str(n)+'\n')
-    # file.write(str(B)+'\n')
-    for i in range(128):
-        # i = np.random.randint(0, B)
-        file.write(str(i)+'\n')
+def gen_gaussian(n, B):
+    mean = B/3
+    std = 20
+    data = np.random.normal(mean, std, size=n)
+    # t = data > B
+    # print(np.where(data > B))
+    file = open("gaussian.txt", "w")
+    for i in data:
+        file.write(str(i) + '\n')
     print("finish")
     file.close()
-
-
-def bit_count(arr):
-    # Make the values type-agnostic (as long as it's integers)
-    t = arr.dtype.type
-    mask = t(-1)
-    s55 = t(0x5555555555555555 & mask)  # Add more digits for 128bit support
-    s33 = t(0x3333333333333333 & mask)
-    s0F = t(0x0F0F0F0F0F0F0F0F & mask)
-    s01 = t(0x0101010101010101 & mask)
-
-    arr = arr - ((arr >> 1) & s55)
-    arr = (arr & s33) + ((arr >> 2) & s33)
-    arr = (arr + (arr >> 4)) & s0F
-    return (arr * s01) >> (8 * (arr.itemsize - 1))
 
 
 if __name__ == '__main__':
-    generate_uniform(1000000, 1024)
-    # generate_zipf(int(10e5), pow(2, 16))
-    #print(bit_count(np.array([[1,2],[3,4]])))
-    #3dummy()
+    parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
+    parser.add_argument('--n', type=int, help='total number of user')
+    parser.add_argument('--B', '--b', type=int, help='domain range')
+    parser.add_argument('--dataset', type=str, default='uniform',
+                        help='input data set')
+    opt = parser.parse_args()
+    n = opt.n
+    b = opt.B
+    t = opt.dataset
+    if t == "uniform":
+        generate_uniform(n, b)
+    elif t == "gaussian":
+        gen_gaussian(n, b)
+    else:
+        gen_zipf(n, b)
