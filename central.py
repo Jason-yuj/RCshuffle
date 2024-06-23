@@ -77,7 +77,6 @@ def range_query_approx(W):
     result = np.dot(tree_q, x_p)
     return result
 
-
 def true_result(W):
     # global data
     # index_l = bisect_left(data, min(l, h))

@@ -4,10 +4,8 @@ import numpy as np
 
 def checker(p, eps, delta, n):
     epow = pow(math.e, eps)
-    tp = [1.0]
     tp2 = [1.0]
     for i in range(n + 1):
-        tp.append((tp[i] * p))
         tp2.append((tp2[i] * (1 - p)))
     pdf = []
     cdf = np.zeros(n)
@@ -50,8 +48,16 @@ def search(n, eps):
 
 
 if __name__ == '__main__':
-    result = search(1000000, 0.5)
-    print(result)
+    # result = search(100000000, 0.5)
+    # print(result)
+    n = int(1e8)
+    eps = 0.5
+    delta = 1 / (n ** 2)
+    p = 5000 / n
+    mu = 32 * math.log(2 / delta) / (eps * eps)
+    print(mu)
+    test = checker(p, eps, delta, n)
+    print(test)
     # t = 0
     # for i in range(10000000):
     #     t += 1

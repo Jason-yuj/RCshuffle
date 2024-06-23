@@ -1,13 +1,25 @@
+import argparse
 import collections
 import math
 
 import numpy as np
 from tqdm import tqdm
 
+mu_list = {}
+mu_list[(int(1e6), 5)] = 417.908
+mu_list[(int(1e6), 10)] = 119.568
+mu_list[(int(1e6), 20)] = 45.2271
+mu_list[(int(1e7), 5)] = 493.896
+mu_list[(int(1e7), 10)] = 141.113
+mu_list[(int(1e7), 20)] = 53.3447
+mu_list[(int(1e8), 5)] = 600
+mu_list[(int(1e8), 10)] = 162.659
+mu_list[(int(1e9), 20)] = 61.4624
 
-def load_data():
+
+def load_data(file):
     global data
-    file = open('../Data/data.txt', 'r')
+    file = open(file, 'r')
     data = []
     a = file.readlines()
     for i in a:
@@ -90,7 +102,7 @@ def analyzer():
     # print(opt_frequency)
     for i in range(1, 2 * B):
         t = pow(-1, math.floor(math.log2(max(1, i))) + (math.log2(B) % 2))
-        opt_frequency[i-1] -= t * mu_1
+        opt_frequency[i - 1] -= t * mu_1
     # print(opt_frequency)
     return
 
@@ -152,13 +164,12 @@ def print_info(file):
     file.write("number of participants:" + str(n) + "\n")
     file.write("domain size:" + str(B) + "\n")
     file.write("mu:" + str(mu_1) + "\n")
+    file.write("dataset:" + "uniform" + "\n")
 
     file.write("expected number of message / user:" + str(expected_msg) + "\n")
     # file.write("read number of message :" + str(number_msg) + "\n")
     file.write("real number of message / user:" + str(len(messages) / n) + "\n")
 
-    file.write("L1 error:" + str(l1_error) + "\n")
-    file.write("L2 error:" + str(l2_error) + "\n")
     file.write("Linf error:" + str(error_5) + "\n")
     file.write("50\% error:" + str(error_1) + "\n")
     file.write("90\% error:" + str(error_2) + "\n")
@@ -178,18 +189,42 @@ if __name__ == '__main__':
     global n
     global mu_1
     global test
-    test = 0.0
-    B = 1024
-    n = 1000000
+    parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
+    parser.add_argument('--n', type=int, help='total number of user')
+    parser.add_argument('--B', '--b', type=int, help='domain range, B << n')
+    # parser.add_argument('--type', '--t', type=str, choices=["count", "k"], help='type of the query', default="count")
+    # parser.add_argument('--l', type=int, choices=[1, 2], default=1, help='case for l')
+    parser.add_argument('--dataset', type=str, default='uniform',
+                        help='input data set')
+    # parser.add_argument('--k', type=float, default=0.5,
+    #                     help='quantile for k-selection')
+    parser.add_argument('--epi', type=float, default=5, help='privacy budget')
+    opt = parser.parse_args()
+    # test = 0.0
+    B = opt.B
+    n = opt.n
     delta = 1 / (n * n)
-    eps = 5
+    eps = opt.epi
     delta_s = delta / math.log2(B)
     eps_s = eps / math.log2(B)
-    mu_1 = 417.968
+    mu_1 = mu_list[(n, eps)]
+    print(mu_1)
     number_msg = 0
     messages = []
     print("preprocess")
-    load_data()
+    in_file = opt.dataset
+
+    if in_file == "uniform":
+        file_name = "../Data/uniform.txt"
+    elif in_file == "AOL":
+        file_name = "../Data/AOL.txt"
+    elif in_file == "zipf":
+        file_name = "../Data/zipf.txt"
+    elif in_file == "gaussian":
+        file_name = "../Data/gaussian.txt"
+    else:
+        file_name = "../Data/uniform.txt"
+    load_data(file_name)
     pre_process()
     sample_prob = mu_1 / n
     # sample_prob = 0.01
@@ -206,9 +241,6 @@ if __name__ == '__main__':
     error = []
     # true_frequency = np.ones(B)
     # for _ in range(100):
-    global l1_error
-    global l2_error
-    l2_error = 0.0
     for l in tqdm(range(B)):
         for h in range(l + 1, B):
             # l = np.random.randint(0, B)
@@ -220,8 +252,7 @@ if __name__ == '__main__':
             # print(l,h,noise_result,true)
             # print(l, h, noise_result, true)
             error.append(abs(noise_result - true))
-            l2_error += pow(abs(noise_result - true), 2)
-    print(opt_frequency)
+    # print(opt_frequency)
     # print(error)
     global error_1
     global error_2
@@ -236,9 +267,9 @@ if __name__ == '__main__':
     error_3 = error[int(len(error) * 0.95)]
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
-    l1_error = sum(error)
     error_6 = np.average(error)
-    out_file = open("../log/opt_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
+    out_file = open("../log/optS_" + str(opt.dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt",
+                    'w')
     print_info(out_file)
     # print(error_1, error_3)
     print("finish")
