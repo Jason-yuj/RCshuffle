@@ -1,14 +1,27 @@
 # small domain with range query tree
+import argparse
 import collections
 import math
 
 import numpy as np
 from tqdm import tqdm
 
+# precomputed mu
+mu_list = {}
+mu_list[(int(1e6), 5)] = 417.908
+mu_list[(int(1e6), 10)] = 119.568
+mu_list[(int(1e6), 20)] = 45.2271
+mu_list[(int(1e7), 5)] = 493.896
+mu_list[(int(1e7), 10)] = 141.113
+mu_list[(int(1e7), 20)] = 53.3447
+mu_list[(int(1e8), 5)] = 600
+mu_list[(int(1e8), 10)] = 162.659
+mu_list[(int(1e9), 20)] = 61.4624
 
-def load_data():
+
+def load_data(file):
     global data
-    file = open('../Data/data.txt', 'r')
+    file = open(file, 'r')
     data = []
     a = file.readlines()
     for i in a:
@@ -170,8 +183,6 @@ def print_info(file):
     # file.write("read number of message :" + str(number_msg) + "\n")
     file.write("real number of message / user:" + str(len(messages) / n) + "\n")
 
-    file.write("L1 error:" + str(l1_error) + "\n")
-    file.write("L2 error:" + str(l2_error) + "\n")
     file.write("Linf error:" + str(error_5) + "\n")
     file.write("50\% error:" + str(error_1) + "\n")
     file.write("90\% error:" + str(error_2) + "\n")
@@ -193,33 +204,52 @@ if __name__ == '__main__':
     global true_frequency
     global number_msg
     global expected_msg
-    B = 1024
-    n = 100000
-    eps = 15
+    parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
+    parser.add_argument('--n', type=int, help='total number of user')
+    parser.add_argument('--B', '--b', type=int, help='domain range, B << n')
+    # parser.add_argument('--type', '--t', type=str, choices=["count", "k"], help='type of the query', default="count")
+    # parser.add_argument('--l', type=int, choices=[1, 2], default=1, help='case for l')
+    parser.add_argument('--dataset', type=str, default='uniform',
+                        help='input data set')
+    # parser.add_argument('--k', type=float, default=0.5,
+    #                     help='quantile for k-selection')
+    parser.add_argument('--epi', type=float, default=5, help='privacy budget')
+    opt = parser.parse_args()
+    B = opt.B
+    n = opt.n
+    eps = opt.epi
     delta = 1 / (n * n)
     # split privacy budget
     eps_s = eps / math.log2(B)
     delta_s = delta / math.log2(B)
-    mu_1 = 32 * math.log(2 / delta_s) / (eps_s * eps_s)
+    # mu_1 = 32 * math.log(2 / delta_s) / (eps_s * eps_s)
+    mu_1 = mu_list[(n, eps)]
+    print(mu_1)
     sample_prob = mu_1 / n
     print(sample_prob)
     number_msg = 0
     messages = []
     print("preprocess")
+    in_file = opt.dataset
 
-    load_data()
+    if in_file == "uniform":
+        file_name = "../Data/uniform.txt"
+    elif in_file == "AOL":
+        file_name = "../Data/AOL.txt"
+    elif in_file == "zipf":
+        file_name = "../Data/zipf.txt"
+    elif in_file == "gaussian":
+        file_name = "../Data/gaussian.txt"
+    else:
+        file_name = "../Data/uniform.txt"
+    load_data(file_name)
     pre_process()
     print("initialize")
     for j in tqdm(range(n)):
         local_randomizer(data[j], sample_prob)
     analyzer()
-    print(rqt_frequency)
     expected_msg = math.log2(2*B) + sample_prob * (2 * B -1)
-    print(expected_msg)
     error = []
-    global l1_error
-    global l2_error
-    l2_error = 0.0
     for l in tqdm(range(B)):
         for h in range(l + 1, B):
             # l = np.random.randint(0, B)
@@ -229,7 +259,6 @@ if __name__ == '__main__':
             noise_result = range_query(l, h)
             true = true_result(l, h)
             error.append(abs(noise_result - true))
-            l2_error += pow(abs(noise_result - true), 2)
     error.sort()
     global error_1
     global error_2
@@ -243,8 +272,7 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    l1_error = sum(error)
-    out_file = open("../log/RQT_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
+    out_file = open("../log/RQT_" + str(opt.dataset) + "_B="+ str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
     print_info(out_file)
     out_file.close()
-    print('PyCharm')
+    print('finish')

@@ -5,6 +5,7 @@ import math
 import numpy as np
 from tqdm import tqdm
 
+# precomputed mu
 mu_list = {}
 mu_list[(int(1e6), 5)] = 417.908
 mu_list[(int(1e6), 10)] = 119.568
