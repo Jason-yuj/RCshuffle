@@ -60,7 +60,7 @@ def gen_gaussian(n, B):
     # print(np.where(data > B))
     file = open("gaussian.txt", "w")
     for i in data:
-        file.write(str(i) + '\n')
+        file.write(str(int(i)) + '\n')
     print("finish")
     file.close()
 

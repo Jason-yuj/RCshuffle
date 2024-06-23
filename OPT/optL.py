@@ -1,3 +1,4 @@
+import argparse
 import collections
 from math import log, log2, ceil, floor
 from bisect import bisect_right, bisect_left
@@ -7,9 +8,9 @@ import numpy as np
 from tqdm import tqdm
 
 
-def load_data():
+def load_data(filename):
     global data
-    file = open('../Data/data1.txt', 'r')
+    file = open(filename, 'r')
     data = []
     a = file.readlines()
     for i in a:
@@ -352,7 +353,8 @@ def print_info(file):
     file.write("epsilon:" + str(eps) + "\n")
     file.write("delta:" + str(delta) + "\n")
     file.write("number of participants:" + str(n) + "\n")
-    file.write("domain size:" + str(B) + "\n")
+    file.write("large domain size:" + str(B) + "\n")
+    file.write("reduced small domain:" + str(next) + "\n")
     # file.write("mu:" + str(mu_1) + "\n")
 
     # file.write("expected number of message / user:" + str(expected_msg) + "\n")
@@ -389,6 +391,11 @@ if __name__ == '__main__':
     global true_frequency
     global levelq
     global bertrand_primes
+    parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
+    parser.add_argument('--dataset', type=str, default='uniform',
+                        help='input data set')
+    parser.add_argument('--epi', type=float, default=5, help='privacy budget')
+    opt = parser.parse_args()
     # precomputed primes
     bertrand_primes = [
         2, 3, 5, 7, 13, 23,
@@ -398,29 +405,42 @@ if __name__ == '__main__':
         10199767, 20399531, 40799041, 81598067, 163196129, 326392249,
         652784471, 1305568919, 2611137817, 5222275627]
     messages = {}
-    B = pow(2, 30)
-    n = 1e7
-    eps = 5
+    data = opt.dataset
+    # fixed n and B
+    if data == "AOL":
+        B = pow(2, 30)
+        n = 1e7
+    else:
+        B = pow(2, 30)
+        n = 1e7
+    eps = opt.epi
     delta = 1 / (n * n)
     s = 0
     t = log2(B)
     c = 2.5
     beta = 0.1
-    # print(s, t)
     b = ceil(n / pow(log2(n), c))
-    # mu = 32 * math.log(2 / delta) / (eps * eps)
     mu = 97.9614
-    # phi = pow(math.log2(n), 3.5)
-    # around 3.7
+    # fixed
     phi = 2e4
     r = t - s + 1
     fen = n / (2 * r)
-    # print(phi / n)
     print(n, r, fen)
     print(mu * b / fen)
     # rho = (30 * r / phi) * math.log((phi * B / n) + (r * n / (phi * beta)))
     rho = min((30 * r / phi) * log(phi * B / n), (8 * r / phi) * log(r * n / (phi * beta)))
-    load_data()
+    in_file = opt.dataset
+    if in_file == "uniform":
+        file_name = "./uniform.txt"
+    elif in_file == "AOL":
+        file_name = "./AOL_2.txt"
+    elif in_file == "zipf":
+        file_name = "./zipf.txt"
+    elif in_file == "gaussian":
+        file_name = "./gaussian.txt"
+    else:
+        file_name = "./uniform.txt"
+    load_data(file_name)
     pre_process()
     # print( math.log(25000, math.log2(n)))
     # heavy frequency threshold
@@ -451,8 +471,9 @@ if __name__ == '__main__':
     error = []
     b_1 = len(small_domain)
     # parameter for range counting
-    eps_2 = 5
+    eps_2 = opt.epi
     # round to the power of 2
+    global next
     next = pow(2, ceil(log(b_1) / log(2)))
     delta_s = delta / log2(next)
     eps_s = eps_2 / log2(next)
@@ -479,9 +500,9 @@ if __name__ == '__main__':
         small_h = domain_map_single(small_domain, max(l, h), 0)
         noise_result = range_query(small_l, small_h)
         true = true_result(l, h)
-        if i <= 10:
-            print(l, h, small_l, small_h)
-            print(noise_result, true, abs(noise_result - true))
+        # if i <= 10:
+        #     print(l, h, small_l, small_h)
+        #     print(noise_result, true, abs(noise_result - true))
         error.append(abs(noise_result - true))
     global error_1
     global error_2
@@ -497,7 +518,7 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    out_file = open("../log/optL_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
+    out_file = open("./log/optL_" + str(opt.dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
     print_info(out_file)
     # print(error_1, error_3)
     print("finish")

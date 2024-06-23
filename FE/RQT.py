@@ -19,9 +19,9 @@ mu_list[(int(1e8), 10)] = 162.659
 mu_list[(int(1e9), 20)] = 61.4624
 
 
-def load_data(file):
+def load_data(filename):
     global data
-    file = open(file, 'r')
+    file = open(filename, 'r')
     data = []
     a = file.readlines()
     for i in a:
@@ -207,13 +207,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
     parser.add_argument('--n', type=int, help='total number of user')
     parser.add_argument('--B', '--b', type=int, help='domain range, B << n')
-    # parser.add_argument('--type', '--t', type=str, choices=["count", "k"], help='type of the query', default="count")
-    # parser.add_argument('--l', type=int, choices=[1, 2], default=1, help='case for l')
     parser.add_argument('--dataset', type=str, default='uniform',
                         help='input data set')
-    # parser.add_argument('--k', type=float, default=0.5,
-    #                     help='quantile for k-selection')
     parser.add_argument('--epi', type=float, default=5, help='privacy budget')
+    parser.add_argument('--rep', type=int)
     opt = parser.parse_args()
     B = opt.B
     n = opt.n
@@ -233,15 +230,15 @@ if __name__ == '__main__':
     in_file = opt.dataset
 
     if in_file == "uniform":
-        file_name = "../Data/uniform.txt"
+        file_name = "./uniform.txt"
     elif in_file == "AOL":
-        file_name = "../Data/AOL.txt"
+        file_name = "./AOL.txt"
     elif in_file == "zipf":
-        file_name = "../Data/zipf.txt"
+        file_name = "./zipf.txt"
     elif in_file == "gaussian":
-        file_name = "../Data/gaussian.txt"
+        file_name = "./gaussian.txt"
     else:
-        file_name = "../Data/uniform.txt"
+        file_name = "./uniform.txt"
     load_data(file_name)
     pre_process()
     print("initialize")
@@ -272,7 +269,7 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    out_file = open("../log/RQT_" + str(opt.dataset) + "_B="+ str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
+    out_file = open("./log/RQT_" + str(opt.rep) + "_" + str(opt.dataset) + "_B="+ str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
     print_info(out_file)
     out_file.close()
     print('finish')
