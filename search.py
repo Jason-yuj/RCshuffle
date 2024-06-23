@@ -31,9 +31,9 @@ def checker(p, eps, delta, n):
     return prob <= delta
 
 
-def search(n, eps):
+def search(n, eps, delta):
     le = 0
-    delta = 1 / (n ** 2)
+    # delta = 1 / (n ** 2)
     mu = 32 * math.log(2 / delta) / (eps * eps) / 2
     ri = 1000 / n
     print(32 * math.log(2 / delta) / (eps * eps))
@@ -52,12 +52,13 @@ if __name__ == '__main__':
     # print(result)
     n = int(1e8)
     eps = 0.5
-    delta = 1 / (n ** 2)
-    p = 5000 / n
-    mu = 32 * math.log(2 / delta) / (eps * eps)
-    print(mu)
-    test = checker(p, eps, delta, n)
-    print(test)
+    delta = 1 / (n)
+    # p = 5000 / n
+    # mu = 32 * math.log(2 / delta) / (eps * eps)
+    # print(mu)
+    search(n, eps, delta)
+    # test = checker(p, eps, delta, n)
+    # print(test)
     # t = 0
     # for i in range(10000000):
     #     t += 1
