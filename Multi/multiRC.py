@@ -128,7 +128,7 @@ if __name__ == "__main__":
     B = 32
     n = 1e7
     delta = 1 / (n * n)
-    eps = 5
+    eps = 10
     delta_s = delta / pow(log2(B)+1, 2)
     eps_s = eps / pow(log2(B)+1, 2)
     mu_1 = 32 * log(2 / delta_s) / (eps_s * eps_s)

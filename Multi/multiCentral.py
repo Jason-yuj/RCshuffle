@@ -1,5 +1,5 @@
 import numpy as np
-from math import log2, pow, log, floor
+from math import log2, pow, log, sqrt
 
 from tqdm import tqdm
 
@@ -15,8 +15,7 @@ def load_data(filename):
 
 
 class Tree2D:
-    def __init__(self, n, mu):
-        self.mu = mu
+    def __init__(self, n):
         self.n = n
         self.tree = np.array([[0] * (2 * self.n - 1) for _ in range(2 * self.n - 1)])
 
@@ -32,40 +31,14 @@ class Tree2D:
                 else:
                     self.tree[i][j] = self.tree[i][2 * j + 1] + self.tree[i][2 * j + 2]
 
-    def add(self, v1, v2, p):
-        # true msg
-        msg = 0
-        # self.tree[v1 + self.n - 1][v2 + self.n - 1] += 1
-        # parent real msg
-        # aux tree
-        i = v1 + self.n
-        j = v2 + self.n
-        first_layer_tree = []
-        while i != 0:
-            first_layer_tree.append(i-1)
-            i = i // 2
-        # first layer tree
-        for t in first_layer_tree:
-            j_2 = j
-            while j_2 != 0:
-                self.tree[t][j_2-1] += 1
-                j_2 = j_2 // 2
-                msg += 1
+    def add_noise_lap(self, eps):
+        z = np.random.laplace(0, 1 / eps, size=(2 * self.n - 1, 2 * self.n - 1))
+        self.tree = self.tree + z
 
-        # noise msg
-        noise_msg_1 = np.random.binomial(1, p, size=(2 * self.n - 1, 2 * self.n - 1))
-        noise_msg_1 = np.argwhere(noise_msg_1 == 1)
-        # print(len(noise_msg_1), (2 * self.n - 1) * (2 * self.n - 1))
-        self.tree[noise_msg_1[:,0], noise_msg_1[:,1]] += 1
-        msg += len(noise_msg_1)
-        return msg
-
-    # for build the whole tree in a bottom-up manner
-    def build(self):
-        # debias
-        for i in range(2 * self.n - 2, -1, -1):
-            for j in range(2 * self.n - 2, -1, -1):
-                self.tree[i][j] -= self.mu
+    def add_noise_gaussian(self, eps, delta):
+        sigma = sqrt(2 * log(2 / delta)) / eps
+        z = np.random.normal(0, sigma, size=(2 * self.n - 1, 2 * self.n - 1))
+        self.tree = self.tree + z
 
     def get_node(self, l, r):
         nodes = []
@@ -121,38 +94,47 @@ if __name__ == "__main__":
     eps = 10
     delta_s = delta / pow(log2(B)+1, 2)
     eps_s = eps / pow(log2(B)+1, 2)
-    mu_1 = 32 * log(2 / delta_s) / (eps_s * eps_s)
-    sample_prob = mu_1 / n
-    print(sample_prob, mu_1)
-    tree = Tree2D(B, mu_1)
-    true = Tree2D(B, 1)
+
+    true = Tree2D(B)
+    noise_pure = Tree2D(B)
+    noise_approx = Tree2D(B)
     print("initialize")
-    t = 0
-    # tree.add(1, 1, sample_prob)
     for v1, v2 in tqdm(data):
-        msg = tree.add(v1, v2, sample_prob)
+        noise_pure.true_add(v1, v2)
+        noise_approx.true_add(v1, v2)
         true.true_add(v1,v2)
-        t += msg
-    print(t)
-    tree.build()
+    noise_pure.true_build()
+    noise_pure.add_noise_lap(eps_s)
+    noise_approx.true_build()
+    noise_approx.add_noise_gaussian(eps_s, delta_s)
     true.true_build()
-    print(tree.tree[0])
+    print(noise_pure.tree[0])
+    print(noise_approx.tree[0])
     print(true.tree[0])
-    error = []
+    error1 = []
+    error2 = []
     for r1 in range(B):
         for l1 in range(r1+1, B):
             for r2 in range(B):
                 for l2 in range(r2+1, B):
-                    noise_result = tree.range_query(r1, l1, r2, l2)
+                    noise_pure_result = noise_pure.range_query(r1, l1, r2, l2)
+                    noise_apporox_result = noise_approx.range_query(r1, l1, r2, l2)
                     true_result = true.range_query(r1, l1, r2, l2)
-                    # print(noise_result, true_result)
-                    error.append(abs(noise_result - true_result))
-    error.sort()
-    error_1 = error[int(len(error) * 0.5)]
-    error_2 = error[int(len(error) * 0.9)]
-    error_3 = error[int(len(error) * 0.95)]
-    error_4 = error[int(len(error) * 0.99)]
-    error_5 = max(error)
-    error_6 = np.average(error)
-    print(error_1, error_2, error_3, error_4, error_5, error_6)
-    print(t / n)
+                    error1.append(abs(noise_pure_result - true_result))
+                    error2.append(abs(noise_apporox_result - true_result))
+    error1.sort()
+    error1_1 = error1[int(len(error1) * 0.5)]
+    error1_2 = error1[int(len(error1) * 0.9)]
+    error1_3 = error1[int(len(error1) * 0.95)]
+    error1_4 = error1[int(len(error1) * 0.99)]
+    error1_5 = max(error1)
+    error1_6 = np.average(error1)
+    print("pure", error1_1, error1_2, error1_3, error1_4, error1_5, error1_6)
+    error2.sort()
+    error2_1 = error2[int(len(error2) * 0.5)]
+    error2_2 = error2[int(len(error2) * 0.9)]
+    error2_3 = error2[int(len(error2) * 0.95)]
+    error2_4 = error2[int(len(error2) * 0.99)]
+    error2_5 = max(error2)
+    error2_6 = np.average(error2)
+    print("approx", error2_1, error2_2, error2_3, error2_4, error2_5, error2_6)
