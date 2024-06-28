@@ -83,7 +83,7 @@ def feasible(L, theta, s, attri, eps, delta, n):
 
 def load_data(filename):
     global data
-    file = open("../Data/cube_sample.txt", 'r')
+    file = open("../Data/cube.txt", 'r')
     data = []
     a = file.readlines()
     for i in tqdm(a):
@@ -144,18 +144,18 @@ def local_randomizer(x, p, cells):
     noise_msg = np.random.binomial(1, p, size=len(cells))
     noise_msg_index = np.argwhere(noise_msg == 1)
     msg = [x]
-    # for i in noise_msg_index:
-    #     cell = cells[i[0]]
-    #     msg.append(cell)
-    #     cub = [i[0] for i in np.argwhere(np.array(cell) != -1)]
-    #     cub_level = len(cub)
-    #     if (cub_level - 1) in L_pre_level.keys():
-    #         for cuboid in L_pre_level[cub_level - 1]:
-    #             parent = [-1, -1, -1, -1]
-    #             if child[cuboid][0] == tuple(cub):
-    #                 for j in cuboid:
-    #                     parent[j] = cell[j]
-    #                 msg.append(tuple(parent))
+    for i in noise_msg_index:
+        cell = cells[i[0]]
+        msg.append(cell)
+        cub = [i[0] for i in np.argwhere(np.array(cell) != -1)]
+        cub_level = len(cub)
+        if (cub_level - 1) in L_pre_level.keys():
+            for cuboid in L_pre_level[cub_level - 1]:
+                parent = [-1, -1, -1, -1]
+                if child[cuboid][0] == tuple(cub):
+                    for j in cuboid:
+                        parent[j] = cell[j]
+                    msg.append(tuple(parent))
     return msg
 
 
@@ -168,6 +168,8 @@ def analyzer():
     global messages
     global attri
     global tree
+    global mu_1
+    global d
     fe_counter = collections.Counter(messages)
     for key in fe_counter.keys():
         if key in tree.keys():
@@ -181,14 +183,81 @@ def analyzer():
             cub = [i[0] for i in np.argwhere(np.array(key) != -1)]
             From = child[tuple(cub)][0]
             dim = list(set(From).difference(set(cub)))[0]
-            total = tree[key]
+            t = pow(-1, d - len(cub))
+            total = t * tree[key]
+            # total = tree[key]
             for i in range(attri[dim]):
                 parent = list(key)
                 parent[dim] = i
                 total += tree[tuple(parent)]
             tree[key] = total
-    # for i in tree:
-    #     print(i, tree[i])
+
+    # debias
+    for key in tree:
+        cub = [i[0] for i in np.argwhere(np.array(key) != -1)]
+        t = pow(-1, d - len(cub))
+        tree[key] -= t * mu_1
+        print(key, tree[key])
+
+
+def post_dataCube_true():
+    global data
+    global List_pre
+    global ture_frequency
+    global all_cells
+    ture_frequency = collections.Counter(data)
+    all_cells = []
+    atr_list = [[-1], [-1], [-1], [-1]]
+    for a in (0,1,2,3):
+        atr_list[a] = [i for i in range(-1, attri[a], 1)]
+    for x in atr_list[0]:
+        for y in atr_list[1]:
+            for m in atr_list[2]:
+                for n in atr_list[3]:
+                    all_cells.append((x, y, m, n))
+    all_cells.sort(key=lambda x: list(x).count(-1))
+    for cell in all_cells:
+        # not a base cell
+        if -1 in cell:
+            cub = [i[0] for i in np.argwhere(np.array(cell) != -1)]
+            From = child[tuple(cub)][0]
+            dim = list(set(From).difference(set(cub)))[0]
+            total = ture_frequency[cell]
+            for i in range(attri[dim]):
+                parent = list(cell)
+                parent[dim] = i
+                total += ture_frequency[tuple(parent)]
+            ture_frequency[cell] = total
+
+
+def post_dataCube():
+    global List_pre
+    global tree
+    global all_cells
+    all_cells = []
+    atr_list = [[-1], [-1], [-1], [-1]]
+    for a in (0,1,2,3):
+        atr_list[a] = [i for i in range(-1, attri[a], 1)]
+    for x in atr_list[0]:
+        for y in atr_list[1]:
+            for m in atr_list[2]:
+                for n in atr_list[3]:
+                    all_cells.append((x, y, m, n))
+    all_cells.sort(key=lambda x: list(x).count(-1))
+    for cell in all_cells:
+        # not a base cell
+        if -1 in cell and cell not in tree.keys():
+            cub = [i[0] for i in np.argwhere(np.array(cell) != -1)]
+            From = child[tuple(cub)][0]
+            dim = list(set(From).difference(set(cub)))[0]
+            total = tree[cell]
+            for i in range(attri[dim]):
+                parent = list(cell)
+                parent[dim] = i
+                total += tree[tuple(parent)]
+            tree[cell] = total
+    return tree
+
 
 
 if __name__ == '__main__':
@@ -199,6 +268,8 @@ if __name__ == '__main__':
     global List_pre
     global child
     global attri
+    global mu_1
+    global d
     n = 1e7
     eps = 5
     delta = 1 / (n * n)
@@ -234,7 +305,11 @@ if __name__ == '__main__':
     global data
     global t
     global messages
+    global error
+    global ture_frequency
+    global all_cells
     t = 0
+    error = []
     print("preprocess")
     load_data("filename")
     print("initialize")
@@ -243,4 +318,17 @@ if __name__ == '__main__':
         msg_l = local_randomizer(dt, sample_prob, cells)
         messages += msg_l
     analyzer()
-    print(len(tree))
+    print("finish")
+    post_dataCube_true()
+    post_dataCube()
+    for i in all_cells:
+        error.append(abs(tree[i] - ture_frequency[i]))
+    error.sort()
+    error_1 = error[int(len(error) * 0.5)]
+    error_2 = error[int(len(error) * 0.9)]
+    error_3 = error[int(len(error) * 0.95)]
+    error_4 = error[int(len(error) * 0.99)]
+    error_5 = max(error)
+    error_6 = np.average(error)
+    print(error_1, error_2, error_3, error_4, error_5, error_6)
+    print(t / n)
