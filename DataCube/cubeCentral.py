@@ -83,7 +83,7 @@ def feasible(L, theta, s, attri, eps, delta, n):
 
 def load_data(filename):
     global data
-    file = open("../Data/cube_sample.txt", 'r')
+    file = open("../Data/cube.txt", 'r')
     data = []
     a = file.readlines()
     for i in tqdm(a):
@@ -136,10 +136,8 @@ def pre_process():
 
 
 def get_counter(x):
-    global noise_cube
     global counter
-    counter = [x]
-    noise_cube = {}
+    counter.append(x)
     cur_level = len([i[0] for i in np.argwhere(np.array(x) != -1)])
     for cuboid in L_pre:
         cub_level = len(cuboid)
@@ -157,10 +155,11 @@ def pure_dp(cells):
     pure_dp_cube = collections.Counter(counter)
     z = np.random.laplace(0, len(L_pre) / eps, size=len(cells))
     for i in range(len(cells)):
+        # print(cells[i], pure_dp_cube[cells[i]])
         pure_dp_cube[cells[i]] = pure_dp_cube[cells[i]] + z[i]
 
 
-def approx_dp():
+def approx_dp(cells):
     global approx_dp_cube
     global L_pre
     global counter
@@ -169,10 +168,10 @@ def approx_dp():
     eps_s = eps / len(L_pre)
     delta_s = delta / len(L_pre)
     sigma = sqrt(2 * log(2 / delta_s)) / eps_s
-    pure_dp_cube = collections.Counter(counter)
+    approx_dp_cube = collections.Counter(counter)
     z = np.random.normal(0, sigma, size=len(cells))
     for i in range(len(cells)):
-        pure_dp_cube[cells[i]] = pure_dp_cube[cells[i]] + z[i]
+        approx_dp_cube[cells[i]] = approx_dp_cube[cells[i]] + z[i]
 
 
 def post_dataCube_true():
@@ -205,12 +204,12 @@ def post_dataCube_true():
             ture_frequency[cell] = total
 
 
-def post_dataCube():
+def post_dataCube(cube):
     global List_pre
-    global fe_counter
     global all_cells
     all_cells = []
     atr_list = [[-1], [-1], [-1], [-1]]
+    noise_cube = {}
     for a in (0,1,2,3):
         atr_list[a] = [i for i in range(-1, attri[a], 1)]
     for x in atr_list[0]:
@@ -221,7 +220,7 @@ def post_dataCube():
     all_cells.sort(key=lambda x: list(x).count(-1))
     for cell in all_cells:
         # not a base cell
-        if -1 in cell and cell not in fe_counter.keys():
+        if -1 in cell and cell not in cube.keys():
             cub = [i[0] for i in np.argwhere(np.array(cell) != -1)]
             From = child[tuple(cub)][0]
             dim = list(set(From).difference(set(cub)))[0]
@@ -229,16 +228,18 @@ def post_dataCube():
             for i in range(attri[dim]):
                 parent = list(cell)
                 parent[dim] = i
-                total += fe_counter[tuple(parent)]
-            fe_counter[cell] = total
+                total += noise_cube[tuple(parent)]
+            noise_cube[cell] = total
+        else:
+            noise_cube[cell] = cube[cell]
     # for i in fe_counter:
     #     if fe_counter[i] not in [1,2,4,8,16,32,64,128,256, 1024]:
     #         print(i, fe_counter[i])
-    return fe_counter
+    return noise_cube
 
 
 if __name__ == '__main__':
-    global noise_cube
+    global pure_dp_cube
     global L_pre_level
     global L_level
     global L_pre
@@ -248,7 +249,7 @@ if __name__ == '__main__':
     global d
     global counter
     n = 1e7
-    eps = 5
+    eps = 10
     delta = 1 / (n * n)
     attri = [8, 8, 4, 4]
     L = {(0, 1, 2, 3), (1, 2, 3), (0, 1, 2), (0, 1, 3), (0, 2, 3), (0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3), (1,),
@@ -274,25 +275,45 @@ if __name__ == '__main__':
                     for m in atr_list[3]:
                         cells.append((x, y, l, m))
     global data
-    global error
+    global error1
+    global error2
     global all_cells
+    global approx_dp_cube
+    global pure_dp_cube
+    global ture_frequency
     error = []
+    counter = []
     print("preprocess")
     load_data("filename")
     for dt in tqdm(data):
         get_counter(dt)
-    # get_counter()
+    approx_dp(cells)
+    pure_dp(cells)
     print("initialize")
     print("finish")
     post_dataCube_true()
-    post_dataCube()
+    pure_dp_result = post_dataCube(pure_dp_cube)
+    approx_dp_result = post_dataCube(approx_dp_cube)
+    # for i in pure_dp_result:
+    #     print(i, pure_dp_result[i], approx_dp_result[i], ture_frequency[i])
+    error1 = []
+    error2 = []
     for i in all_cells:
-        error.append(abs(noise_cube[i] - ture_frequency[i]))
-    error.sort()
-    error_1 = error[int(len(error) * 0.5)]
-    error_2 = error[int(len(error) * 0.9)]
-    error_3 = error[int(len(error) * 0.95)]
-    error_4 = error[int(len(error) * 0.99)]
-    error_5 = max(error)
-    error_6 = np.average(error)
-    print(error_1, error_2, error_3, error_4, error_5, error_6)
+        error1.append(abs(pure_dp_result[i] - ture_frequency[i]))
+        error2.append(abs(approx_dp_result[i] - ture_frequency[i]))
+    error1.sort()
+    error1_1 = error1[int(len(error1) * 0.5)]
+    error1_2 = error1[int(len(error1) * 0.9)]
+    error1_3 = error1[int(len(error1) * 0.95)]
+    error1_4 = error1[int(len(error1) * 0.99)]
+    error1_5 = max(error1)
+    error1_6 = np.average(error1)
+    print("pure", error1_1, error1_2, error1_3, error1_4, error1_5, error1_6)
+    error2.sort()
+    error2_1 = error2[int(len(error2) * 0.5)]
+    error2_2 = error2[int(len(error2) * 0.9)]
+    error2_3 = error2[int(len(error2) * 0.95)]
+    error2_4 = error2[int(len(error2) * 0.99)]
+    error2_5 = max(error2)
+    error2_6 = np.average(error2)
+    print("approx", error2_1, error2_2, error2_3, error2_4, error2_5, error2_6)
