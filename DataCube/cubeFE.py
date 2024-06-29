@@ -133,30 +133,31 @@ def pre_process():
                 child[cuboid] = (save, min_mag)
         else:
             child[cuboid] = (None, 1)
-    # for i in child:
-    #     print(i, child[i])
 
 
 def local_randomizer(x, p, cells):
     global tree
+    global L_pre
     global L_pre_level
     global child
     noise_msg = np.random.binomial(1, p, size=len(cells))
     noise_msg_index = np.argwhere(noise_msg == 1)
     msg = [x]
-    for i in noise_msg_index:
-        cell = cells[i[0]]
-        msg.append(cell)
+    # real msg
+    for cell in L_pre:
         cub = [i[0] for i in np.argwhere(np.array(cell) != -1)]
         cub_level = len(cub)
         if (cub_level - 1) in L_pre_level.keys():
             for cuboid in L_pre_level[cub_level - 1]:
                 parent = [-1, -1, -1, -1]
-                if child[cuboid][0] == tuple(cub):
-                    for j in cuboid:
+                if child[cuboid][0] == tuple(x):
+                    for j in x:
                         parent[j] = cell[j]
                     msg.append(tuple(parent))
-
+    # noise msg
+    for i in noise_msg_index:
+        cell = cells[i[0]]
+        msg.append(cell)
     return msg
 
 
@@ -172,32 +173,11 @@ def analyzer():
     global mu_1
     global d
     fe_counter = collections.Counter(messages)
-    for key in fe_counter.keys():
-        if key in tree.keys():
-            tree[key] = fe_counter[key]
-    keys = list(tree.keys())
-    keys.sort(key=lambda x: list(x).count(-1))
-    # print(keys)
-    for key in keys:
-        # not a base cell
-        if -1 in key:
-            cub = [i[0] for i in np.argwhere(np.array(key) != -1)]
-            From = child[tuple(cub)][0]
-            dim = list(set(From).difference(set(cub)))[0]
-            t = pow(-1, d - len(cub))
-            total = t * tree[key]
-            # total = tree[key]
-            for i in range(attri[dim]):
-                parent = list(key)
-                parent[dim] = i
-                total += tree[tuple(parent)]
-            tree[key] = total
-
     # debias
-    for key in tree:
+    for key in fe_counter:
         cub = [i[0] for i in np.argwhere(np.array(key) != -1)]
         t = pow(-1, d - len(cub))
-        tree[key] -= t * mu_1
+        fe_counter[key] -= t * mu_1
         # print(key, tree[key])
 
 
