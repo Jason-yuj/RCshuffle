@@ -6,18 +6,6 @@ import math
 import numpy as np
 from tqdm import tqdm
 
-# precomputed mu
-mu_list = {}
-mu_list[(int(1e6), 5)] = 417.908
-mu_list[(int(1e6), 10)] = 119.568
-mu_list[(int(1e6), 20)] = 45.2271
-mu_list[(int(1e7), 5)] = 493.896
-mu_list[(int(1e7), 10)] = 141.113
-mu_list[(int(1e7), 20)] = 53.3447
-mu_list[(int(1e8), 5)] = 600
-mu_list[(int(1e8), 10)] = 162.659
-mu_list[(int(1e9), 20)] = 61.4624
-
 
 def load_data(filename):
     global data
@@ -32,7 +20,7 @@ def pre_process():
     global true_frequency
     true_frequency = np.zeros(B)
     true_counter = collections.Counter(data)
-    for i in range(0, B + 1):
+    for i in range(0, B):
         if i in true_counter.keys():
             true_frequency[i] += true_counter[i]
 
@@ -74,7 +62,6 @@ def analyzer():
             rqt_frequency[i] += fe_counter[i]
             # debias-step
             rqt_frequency[i] -= mu_1
-    print(rqt_frequency)
 
 
 def true_result(l, h):
@@ -166,18 +153,10 @@ if __name__ == '__main__':
     parser.add_argument('--epi', type=float, default=5, help='privacy budget')
     parser.add_argument('--rep', type=int)
     opt = parser.parse_args()
-    B = opt.B
     n = opt.n
     eps = opt.epi
     delta = 1 / (n * n)
-    # split privacy budget
-    eps_s = eps / math.log2(B)
-    delta_s = delta / math.log2(B)
-    mu_1 = 32 * math.log(2 / delta_s) / (eps_s * eps_s)
     # mu_1 = mu_list[(n, eps)]
-    print(mu_1)
-    sample_prob = mu_1 / n
-    print(sample_prob)
     number_msg = 0
     messages = []
     print("preprocess")
@@ -191,9 +170,26 @@ if __name__ == '__main__':
         file_name = "./zipf.txt"
     elif in_file == "gaussian":
         file_name = "./gaussian.txt"
+    elif in_file == "netflix":
+        file_name = "./netflix.txt"
     else:
         file_name = "./uniform.txt"
     load_data(file_name)
+
+    if in_file == "AOL" or in_file == "netflix":
+        distinct = set(data)
+        domain = len(distinct)
+        B = pow(2, math.ceil(math.log(domain) / math.log(2)))
+        n = len(data)
+    else:
+        B = opt.B
+    delta_s = delta / (math.log2(B) + 1)
+    eps_s = eps / (math.log2(B) + 1)
+    mu_1 = 32 * math.log(2 / delta_s) / (eps_s * eps_s)
+    # mu_1 = mu_list[(n, eps)]
+    print(mu_1)
+    sample_prob = mu_1 / n
+    print(sample_prob)
     pre_process()
     print("initialize")
     for j in tqdm(range(n)):
@@ -223,7 +219,7 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    out_file = open("./log/RQT_" + str(opt.rep) + "_" + str(opt.dataset) + "_B="+ str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
+    out_file = open("./log/Small1D/RQT/" + str(opt.rep) + "_" + str(opt.dataset) + "_B="+ str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
     print_info(out_file)
     out_file.close()
     print('finish')

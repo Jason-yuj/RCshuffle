@@ -155,11 +155,7 @@ if __name__ == '__main__':
     n = opt.n
     delta = 1 / (n * n)
     eps = opt.epi
-    delta_s = delta / math.log2(B)
-    eps_s = eps / math.log2(B)
-    mu_1 = 32 * math.log(2 / delta_s) / (eps_s * eps_s)
-    # mu_1 = mu_list[(n, eps)]
-    print(mu_1)
+
     number_msg = 0
     messages = []
     print("preprocess")
@@ -170,12 +166,27 @@ if __name__ == '__main__':
     elif in_file == "AOL":
         file_name = "./AOL.txt"
     elif in_file == "zipf":
-        file_name = ".zipf.txt"
+        file_name = "./zipf.txt"
     elif in_file == "gaussian":
         file_name = "./gaussian.txt"
+    elif in_file == "netflix":
+        file_name = "./netflix.txt"
     else:
         file_name = "./uniform.txt"
     load_data(file_name)
+
+    if in_file == "AOL" or in_file == "netflix":
+        distinct = set(data)
+        domain = len(distinct)
+        B = pow(2, math.ceil(math.log(domain) / math.log(2)))
+        n = len(data)
+    else:
+        B = opt.B
+    delta_s = delta / (math.log2(B) + 1)
+    eps_s = eps / (math.log2(B) + 1)
+    mu_1 = 32 * math.log(2 / delta_s) / (eps_s * eps_s)
+    # mu_1 = mu_list[(n, eps)]
+    print(mu_1)
     pre_process()
     sample_prob = mu_1 / n
     # sample_prob = 0.01
@@ -212,7 +223,7 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    out_file = open("./log/optS_" + str(opt.rep) + "_" + str(opt.dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt",
+    out_file = open("./log/Small1D/OPTs/" + str(opt.rep) + "_" + str(opt.dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt",
                     'w')
     print_info(out_file)
     print("finish")
