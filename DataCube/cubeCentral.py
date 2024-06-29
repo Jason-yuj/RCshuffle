@@ -1,5 +1,5 @@
 import numpy as np
-from math import log2, pow, log, floor
+from math import log2, pow, log, floor, sqrt
 
 import collections
 from itertools import permutations, combinations
@@ -83,7 +83,7 @@ def feasible(L, theta, s, attri, eps, delta, n):
 
 def load_data(filename):
     global data
-    file = open("../Data/cube.txt", 'r')
+    file = open("../Data/cube_sample.txt", 'r')
     data = []
     a = file.readlines()
     for i in tqdm(a):
@@ -135,47 +135,44 @@ def pre_process():
             child[cuboid] = (None, 1)
 
 
-def local_randomizer(x, p, cells):
-    global tree
-    global L_pre
-    global L_pre_level
-    global child
-    noise_msg = np.random.binomial(1, p, size=len(cells))
-    noise_msg_index = np.argwhere(noise_msg == 1)
-    msg = [x]
+def get_counter(x):
+    global noise_cube
+    global counter
+    counter = [x]
+    noise_cube = {}
     cur_level = len([i[0] for i in np.argwhere(np.array(x) != -1)])
-    # real msg
     for cuboid in L_pre:
         cub_level = len(cuboid)
         if cub_level < cur_level and cub_level in L_pre_level.keys():
             parent = [-1, -1, -1, -1]
             for j in cuboid:
                 parent[j] = x[j]
-            msg.append(tuple(parent))
-    # noise msg
-    for i in noise_msg_index:
-        cell = cells[i[0]]
-        msg.append(cell)
-    return msg
+            counter.append(tuple(parent))
 
 
-def analyzer():
-    global L_pre_level
-    global L_level
+def pure_dp(cells):
+    global pure_dp_cube
     global L_pre
-    global List_pre
-    global child
-    global messages
-    global attri
-    global tree
-    global mu_1
-    global d
-    global fe_counter
-    fe_counter = collections.Counter(messages)
-    # debias
-    for key in fe_counter:
-        fe_counter[key] -= mu_1
-        # print(key, tree[key])
+    global counter
+    pure_dp_cube = collections.Counter(counter)
+    z = np.random.laplace(0, len(L_pre) / eps, size=len(cells))
+    for i in range(len(cells)):
+        pure_dp_cube[cells[i]] = pure_dp_cube[cells[i]] + z[i]
+
+
+def approx_dp():
+    global approx_dp_cube
+    global L_pre
+    global counter
+    global eps
+    global delta
+    eps_s = eps / len(L_pre)
+    delta_s = delta / len(L_pre)
+    sigma = sqrt(2 * log(2 / delta_s)) / eps_s
+    pure_dp_cube = collections.Counter(counter)
+    z = np.random.normal(0, sigma, size=len(cells))
+    for i in range(len(cells)):
+        pure_dp_cube[cells[i]] = pure_dp_cube[cells[i]] + z[i]
 
 
 def post_dataCube_true():
@@ -240,17 +237,16 @@ def post_dataCube():
     return fe_counter
 
 
-
 if __name__ == '__main__':
-    global tree
+    global noise_cube
     global L_pre_level
     global L_level
     global L_pre
     global List_pre
     global child
     global attri
-    global mu_1
     global d
+    global counter
     n = 1e7
     eps = 5
     delta = 1 / (n * n)
@@ -261,17 +257,12 @@ if __name__ == '__main__':
                 (2, 3), (1,),
                 (2,), (0,), (3,), ()]
     d = 4
-    # test = n * sample_prob * (1 - sample_prob)
-
     L_pre = find_opt_cube(eps, d, L, attri, eps, delta, n)
     pre_process()
     print(L_pre)
     delta_s = delta / len(L_pre)
     eps_s = eps / len(L_pre)
-    mu_1 = 32 * log(2 / delta_s) / (eps_s * eps_s)
-    sample_prob = mu_1 / n
     # pre_cube to all counters(cells)
-    tree = {}
     cells = []
     for c in L_pre:
         atr_list = [[-1], [-1], [-1], [-1]]
@@ -281,31 +272,22 @@ if __name__ == '__main__':
             for y in atr_list[1]:
                 for l in atr_list[2]:
                     for m in atr_list[3]:
-                        tree[(x, y, l, m)] = 0
                         cells.append((x, y, l, m))
     global data
-    global t
-    global messages
     global error
-    global ture_frequency
     global all_cells
-    global fe_counter
-    t = 0
     error = []
     print("preprocess")
     load_data("filename")
-    print("initialize")
-    messages = []
     for dt in tqdm(data):
-        msg_l = local_randomizer(dt, sample_prob, cells)
-        messages += msg_l
-    t = len(messages)
-    analyzer()
+        get_counter(dt)
+    # get_counter()
+    print("initialize")
     print("finish")
     post_dataCube_true()
     post_dataCube()
     for i in all_cells:
-        error.append(abs(fe_counter[i] - ture_frequency[i]))
+        error.append(abs(noise_cube[i] - ture_frequency[i]))
     error.sort()
     error_1 = error[int(len(error) * 0.5)]
     error_2 = error[int(len(error) * 0.9)]
@@ -314,4 +296,3 @@ if __name__ == '__main__':
     error_5 = max(error)
     error_6 = np.average(error)
     print(error_1, error_2, error_3, error_4, error_5, error_6)
-    print(t, t / n)
