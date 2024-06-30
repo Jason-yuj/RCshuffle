@@ -1,6 +1,7 @@
 import argparse
 import collections
 import math
+from bisect import bisect_right
 
 import numpy as np
 from tqdm import tqdm
@@ -17,12 +18,8 @@ def load_data(filename):
 
 def pre_process():
     global true_frequency
-    global true_value
-    true_value = []
-    for value in data:
-        true_value.append(value)
     true_frequency = np.zeros(B)
-    true_counter = collections.Counter(true_value)
+    true_counter = collections.Counter(data)
     # print(counter)
     # true_frequency = np.ones(B)
     for i in range(0, B):
@@ -105,10 +102,10 @@ def range_query(l, h):
 
 
 def true_result(l, h):
-    result = 0
-    for index in range(min(l, h), max(l, h)):
-        result += true_frequency[index]
-    return result
+    global data
+    left = bisect_right(data, min(l, h))
+    right = bisect_right(data, max(l, h))
+    return right - left
 
 
 def print_info(file):
@@ -136,7 +133,6 @@ if __name__ == '__main__':
     global eps
     global data
     global B
-    global true_value
     global true_frequency
     global opt_frequency
     global n
@@ -201,6 +197,7 @@ if __name__ == '__main__':
     expected_msg = 1 + sample_prob * (4 * B - 3)
     # print(expected_msg)
     error = []
+    data.sort()
     for l in tqdm(range(B)):
         for h in range(l + 1, B):
             noise_result = range_query(l, h)

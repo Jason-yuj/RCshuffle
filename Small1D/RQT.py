@@ -3,6 +3,8 @@ import argparse
 import collections
 import math
 
+from bisect import bisect_right, bisect_left
+
 import numpy as np
 from tqdm import tqdm
 
@@ -65,10 +67,10 @@ def analyzer():
 
 
 def true_result(l, h):
-    result = 0
-    for index in range(min(l, h), max(l, h)):
-        result += true_frequency[index]
-    return result
+    global data
+    left = bisect_right(data, min(l, h))
+    right = bisect_right(data, max(l, h))
+    return right - left
 
 
 def get_node(B, l, r):
@@ -197,6 +199,7 @@ if __name__ == '__main__':
     analyzer()
     expected_msg = math.log2(2*B) + sample_prob * (2 * B -1)
     error = []
+    data.sort()
     for l in tqdm(range(B)):
         for h in range(l + 1, B):
             # l = np.random.randint(0, B)
