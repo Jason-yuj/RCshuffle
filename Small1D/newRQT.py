@@ -39,6 +39,7 @@ def local_randomizer(x, p):
         i = (i // branch - (i % branch == 0))
         messages.append(i)
     noise_msg_1 = np.random.binomial(1, p, size=size)
+    noise_msg_1 = np.where(noise_msg_1)[0]
     messages += noise_msg_1.tolist()
     return
 
@@ -213,7 +214,7 @@ if __name__ == '__main__':
     # print(messages)
     analyzer()
     # print(rqt_frequency)
-    expected_msg = math.log(B, branch) + sample_prob * size
+    expected_msg = math.log(B, branch) + 1 + sample_prob * size
     # print(expected_msg)
     error = []
     data.sort()
