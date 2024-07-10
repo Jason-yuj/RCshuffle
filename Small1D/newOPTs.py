@@ -18,23 +18,28 @@ def load_data(filename):
 
 def pre_process():
     global true_frequency
+    global B
+    global size
     true_frequency = np.zeros(B)
     true_counter = collections.Counter(data)
-    # print(counter)
-    # true_frequency = np.ones(B)
     for i in range(0, B):
         if i in true_counter.keys():
             true_frequency[i] += true_counter[i]
+    # calculate the total number of counter
+    size = int((branch * B - 1) / (branch - 1))
 
 
 def local_randomizer(x, p):
     global number_msg
     global messages
-    messages.append(B + x - 1)
-    noise_msg_1 = np.random.binomial(1, p, size=2 * B - 1)
+    global branch
+    global size
+    messages.append(size - B + x)
+    noise_msg_1 = np.random.binomial(1, p, size=size)
     noise_msg_1 = np.where(noise_msg_1 == 1)[0]
     noise_msg_2 = noise_msg_1[noise_msg_1 != 0]
-    noise_msg_2 = ((noise_msg_2 + 1) // 2) - 1
+    noise_msg_2 = (noise_msg_2 // branch - (noise_msg_2 % branch == 0))
+    noise_msg_2 = noise_msg_2[noise_msg_2 >= 0]
     messages += noise_msg_1.tolist()
     messages += noise_msg_2.tolist()
     return
@@ -43,53 +48,74 @@ def local_randomizer(x, p):
 def analyzer():
     global opt_frequency
     global messages
-    opt_frequency = np.zeros(2 * B - 1)
+    opt_frequency = np.zeros(size)
     fe_counter = collections.Counter(messages)
-    for i in range(0, 2 * B - 1):
+    for i in range(0, size):
         if i in fe_counter.keys():
             opt_frequency[i] += fe_counter[i]
-    for i in range(B - 1, 0, -1):
-        t = pow(-1, math.floor(math.log2(max(1, i))) + (math.log2(B) % 2))
-        # t = 0
-        opt_frequency[i - 1] = t * (opt_frequency[(i - 1)]) + (opt_frequency[2 * i - 1] + opt_frequency[2 * i])
-    for i in range(1, 2 * B):
-        t = pow(-1, math.floor(math.log2(max(1, i))) + (math.log2(B) % 2))
+    for i in range(size - B, 0, -1):
+        level = 0
+        cur = 0.0
+        while cur < i:
+            cur += pow(branch, level)
+            level += 1
+        # print(i, level - 1)
+        t = pow(-1, level - 1 + (math.log(B, branch) % 2))
+        # print(i, t)
+        opt_frequency[i - 1] = t * (opt_frequency[(i - 1)])
+        for j in range(0, branch):
+            opt_frequency[i - 1] += opt_frequency[branch * (i - 1) + j + 1]
+    for i in range(1, size):
+        level = 0
+        cur = 0.0
+        while cur < i:
+            cur += pow(branch, level)
+            level += 1
+        t = pow(-1, level - 1 + (math.log(B, branch) % 2))
         opt_frequency[i - 1] -= t * mu_1
     return
 
 
 def get_node(B, l, r):
+    global branch
     nodes = []
     start = l
-    next = l
-    base = int(math.log2(B)) + 1
-    level = int(math.log2(B)) + 1
+    next = l + 1
+    base = int(math.log(B, branch))
+    level = int(math.log(B, branch))
     index = l
     segment = []
-    while next < r:
-        if index % 2 == 0:
+    while next <= r:
+        if index % branch == 0:
             save_next = next
-            next += pow(2, base - level)
-            if next < r:
+            next += pow(branch, base - level + 1) - pow(branch, base - level)
+            if next <= r:
                 level -= 1
-                index = index // 2
+                index = index // branch
             else:
                 segment.append((start, save_next, level, index))
-                level = int(math.log2(B)) + 1
-                start = save_next + 1
+                level = int(math.log(B, branch))
+                start = save_next
                 index = start
-                next = start
+                next = start + 1
         else:
             segment.append((start, next, level, index))
-            level = int(math.log2(B)) + 1
-            start = next + 1
-            index = next + 1
+            level = int(math.log(B, branch))
+            start = next
+            index = next
             next += 1
-    for (_, _, level, index) in segment:
-        nodes.append(2 ** (level - 1) + index - 1)
-        # print()
-    # print(segment)
+    for (i, j, level, index) in segment:
+        nodes.append(int(((branch * pow(branch, level-1) - 1) / (branch - 1)) + index))
     return nodes
+
+
+def checker(l, h):
+    global data
+    res = 0
+    for i in data:
+        if l <= i < h:
+            res += 1
+    return res
 
 
 def range_query(l, h):
@@ -97,6 +123,7 @@ def range_query(l, h):
     nodes = get_node(B, min(l, h), max(l, h))
     # print(nodes)
     result = 0
+    # print(l, h, nodes)
     for node in nodes:
         result += opt_frequency[node]
     return result
@@ -139,6 +166,8 @@ if __name__ == '__main__':
     global n
     global mu_1
     global test
+    global domain
+    global size
     parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
     parser.add_argument('--n', type=int, help='total number of user')
     parser.add_argument('--B', '--b', type=int, help='domain range, B << n')
@@ -148,10 +177,14 @@ if __name__ == '__main__':
     parser.add_argument('--rep', type=int)
     opt = parser.parse_args()
     # test = 0.0
-    B = opt.B
-    n = opt.n
+    branch = 4
+    # B = opt.B
+    B = 1024
+    # n = opt.n
+    n = 10000000
     delta = 1 / (n * n)
-    eps = opt.epi
+    # eps = opt.epi
+    eps = 5
 
     number_msg = 0
     messages = []
@@ -170,17 +203,22 @@ if __name__ == '__main__':
         file_name = "./netflix.txt"
     else:
         file_name = "./uniform.txt"
-    load_data(file_name)
+    load_data("../Data/uniform.txt")
 
-    if in_file == "AOL" or in_file == "netflix":
-        distinct = set(data)
-        domain = len(distinct)
-        B = pow(2, math.ceil(math.log(domain) / math.log(2)))
-        n = len(data)
-    else:
-        B = opt.B
-    delta_s = delta / (math.log2(B) + 1)
-    eps_s = eps / (math.log2(B) + 1)
+    # if in_file == "AOL" or in_file == "netflix":
+    #     distinct = set(data)
+    #     domain = len(distinct)
+    #     B = pow(branch, math.ceil(math.log(domain) / math.log(branch)))
+    #     n = len(data)
+    # else:
+    #     domain = opt.B
+    #     B = opt.B
+    distinct = set(data)
+    domain = len(distinct)
+    B = pow(branch, math.ceil(math.log(domain) / math.log(branch)))
+    n = len(data)
+    delta_s = delta / (math.log(B, branch) + 1)
+    eps_s = eps / (math.log(B, branch) + 1)
     mu_1 = 32 * math.log(2 / delta_s) / (eps_s * eps_s)
     # mu_1 = mu_list[(n, eps)]
     print(mu_1)
@@ -195,19 +233,20 @@ if __name__ == '__main__':
     # print(messages)
     analyzer()
     # print(opt_frequency)
-    expected_msg = 1 + sample_prob * (4 * B - 3)
+    expected_msg = 1 + 2 * sample_prob * size
     # print(expected_msg)
     error = []
     data.sort()
-    for l in tqdm(range(B)):
-        for h in range(l + 1, B):
+    for l in tqdm(range(domain)):
+        for h in range(l + 1, domain):
             noise_result = range_query(l, h)
+            # true_2 = checker(l, h)
             true = true_result(l, h)
             # print(l,h,noise_result,true)
-            # print(l, h, noise_result, true)
+            # if noise_result != true:
+            #     print(l, h, noise_result, true)
             error.append(abs(noise_result - true))
-            # if abs(noise_result - true) != 0:
-            #     print(abs(noise_result - true))
+            # print(l, h, noise_result, true)
     # print(opt_frequency)
     # print(error)
     global error_1
@@ -223,7 +262,7 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    out_file = open("../log/Small1D/OPTs/" + str(opt.rep) + "_" + str(opt.dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt",
+    out_file = open("../log/Small1D/newOPTs/" + str(4) + "_" + str(2) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt",
                     'w')
     print_info(out_file)
     print("finish")

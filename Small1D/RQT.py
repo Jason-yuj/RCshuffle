@@ -69,7 +69,7 @@ def analyzer():
 def true_result(l, h):
     global data
     left = bisect_right(data, min(l, h))
-    right = bisect_right(data, max(l, h))
+    right = bisect_left(data, max(l, h))
     return right - left
 
 
