@@ -236,82 +236,86 @@ if __name__ == '__main__':
     # analyzer(1024)
     # end = time.time()
     # print(end - start)
-    B = 1024
-    n = 100000
-    delta = 1 / (n * n)
-    eps = 15
-    messages = []
-    true_value = []
-    tau = math.ceil(math.log2(n))
-    # max elements per user
-    k = math.ceil(math.log2(2 * B))
-    hadamard_m = matrix(k)
-    # k = 1
-    # number of noise messages
-    rho = math.ceil((36.0 * k * k * math.log(math.e * k / (delta * eps))) / (eps * eps))
-    msg = rho + k
-    print(rho)
-    load_data()
-    pre_process()
-    print("initializing...")
-    # print(M_inverse)
-    start = time.time()
-    c = 0
-    for i in tqdm(range(n)):
-        # c += 1
-        # if c % (len(data) / 10) == 0:
-        #     print(c / len(data))
-        #     test = time.time()
-        #     print(test - start)
-        # x = [i]
-        vec_i = np.zeros(B)
-        vec_i[data[i]] += 1
-        range_q = np.dot(M, vec_i)
-        x = np.where(range_q == 1)[0].tolist()
-        # print(x)
-        local_randomizer(x, B, delta, eps)
+    Bs = [512, 1024, 2048]
+    ns = [1000000, 10000000, 100000000]
 
-    analyzer(B)
-    # print(true_frequency)
-    print("finish!")
-    # print(frequency)
-    end = time.time()
-    print(end - start)
-    error = []
-    # for _ in range(100):
-    global l1_error
-    global l2_error
-    l2_error = 0.0
-    for l in tqdm(range(B)):
-        for h in range(l + 1, B):
-            # l = np.random.randint(0, B)
-            # h = np.random.randint(0, B)
-            # while h == l:
-            #     h = np.random.randint(0, B)
-            noise_result = range_query(l, h)
-            true = true_result(l, h)
-            error.append(abs(noise_result - true))
-            l2_error += pow(noise_result - true, 2)
-        # print(noise_result, true)
-    # print(error)
-    global error_1
-    global error_2
-    global error_3
-    global error_4
-    global error_5
-    error.sort()
-    error_1 = error[int(len(error) * 0.5)]
-    error_2 = error[int(len(error) * 0.9)]
-    error_3 = error[int(len(error) * 0.95)]
-    error_4 = error[int(len(error) * 0.99)]
-    error_5 = max(error)
-    error_6 = np.average(error)
-    l1_error = sum(error)
-    out_file = open("../log/ggkpv_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
-    # file.write(str(n)+'\n')
-    # file.write(str(B)+'\n')
-    print_info(out_file)
-    print("finish")
-    out_file.close()
+    eps = [5,10, 20]
+    # messages = []
+    # true_value = []
+    for B in Bs:
+        for n in ns:
+            for e in eps:
+                delta = 1 / (n * n)
+                tau = math.ceil(math.log2(n))
+                # max elements per user
+                k = math.ceil(math.log2(2 * B))
+                # hadamard_m = matrix(k)
+                # k = 1
+                # number of noise messages
+                rho = math.ceil((36.0 * k * k * math.log(math.e * k / (delta * e))) / (e * e))
+                msg = rho + k
+                print(B, n, e, msg)
+    # load_data()
+    # pre_process()
+    # print("initializing...")
+    # # print(M_inverse)
+    # start = time.time()
+    # c = 0
+    # for i in tqdm(range(n)):
+    #     # c += 1
+    #     # if c % (len(data) / 10) == 0:
+    #     #     print(c / len(data))
+    #     #     test = time.time()
+    #     #     print(test - start)
+    #     # x = [i]
+    #     vec_i = np.zeros(B)
+    #     vec_i[data[i]] += 1
+    #     range_q = np.dot(M, vec_i)
+    #     x = np.where(range_q == 1)[0].tolist()
+    #     # print(x)
+    #     local_randomizer(x, B, delta, eps)
+    #
+    # analyzer(B)
+    # # print(true_frequency)
+    # print("finish!")
+    # # print(frequency)
+    # end = time.time()
+    # print(end - start)
+    # error = []
+    # # for _ in range(100):
+    # global l1_error
+    # global l2_error
+    # l2_error = 0.0
+    # for l in tqdm(range(B)):
+    #     for h in range(l + 1, B):
+    #         # l = np.random.randint(0, B)
+    #         # h = np.random.randint(0, B)
+    #         # while h == l:
+    #         #     h = np.random.randint(0, B)
+    #         noise_result = range_query(l, h)
+    #         true = true_result(l, h)
+    #         error.append(abs(noise_result - true))
+    #         l2_error += pow(noise_result - true, 2)
+    #     # print(noise_result, true)
+    # # print(error)
+    # global error_1
+    # global error_2
+    # global error_3
+    # global error_4
+    # global error_5
+    # error.sort()
+    # error_1 = error[int(len(error) * 0.5)]
+    # error_2 = error[int(len(error) * 0.9)]
+    # error_3 = error[int(len(error) * 0.95)]
+    # error_4 = error[int(len(error) * 0.99)]
+    # error_5 = max(error)
+    # error_6 = np.average(error)
+    # l1_error = sum(error)
+    # out_file = open("../log/ggkpv_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
+    # # file.write(str(n)+'\n')
+    # # file.write(str(B)+'\n')
+    # print_info(out_file)
+    # print("finish")
+    # out_file.close()
     # print(error_1, error_2, error_3, error_4)
     # print(np.max(np.array(error)))

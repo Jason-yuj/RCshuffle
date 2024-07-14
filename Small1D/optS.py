@@ -223,7 +223,7 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    out_file = open("../log/Small1D/OPTs/" + str(opt.rep) + "_" + str(opt.dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt",
+    out_file = open("./log/Small1D/OPTs/" + str(opt.rep) + "_" + str(opt.dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt",
                     'w')
     print_info(out_file)
     print("finish")

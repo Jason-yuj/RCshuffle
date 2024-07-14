@@ -17,15 +17,8 @@ def load_data(filename):
 
 
 def pre_process():
-    global true_frequency
     global B
     global size
-    true_frequency = np.zeros(B)
-    true_counter = collections.Counter(data)
-    for i in range(0, B):
-        if i in true_counter.keys():
-            true_frequency[i] += true_counter[i]
-    # calculate the total number of counter
     size = int((branch * B - 1) / (branch - 1))
 
 
@@ -142,7 +135,6 @@ if __name__ == '__main__':
     global eps
     global data
     global B
-    global true_frequency
     global rqt_frequency
     global n
     global mu_1
@@ -158,14 +150,14 @@ if __name__ == '__main__':
     parser.add_argument('--rep', type=int)
     opt = parser.parse_args()
     # test = 0.0
-    branch = 4
+    branch = 2
     # B = opt.B
     B = 1024
     # n = opt.n
     n = 10000000
     delta = 1 / (n * n)
     # eps = opt.epi
-    eps = 5
+    eps = 20
 
     number_msg = 0
     messages = []
@@ -184,7 +176,7 @@ if __name__ == '__main__':
         file_name = "./netflix.txt"
     else:
         file_name = "./uniform.txt"
-    load_data("../Data/uniform.txt")
+    load_data(file_name)
 
     # if in_file == "AOL" or in_file == "netflix":
     #     distinct = set(data)
@@ -236,7 +228,7 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    out_file = open("../log/Small1D/newRQT/" + str(1) + "_" + str(4) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt",
+    out_file = open("../log/Small1D/newRQT/" + str(1) + "_" + str(2) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + "_2.txt",
                     'w')
     print_info(out_file)
     print("finish")

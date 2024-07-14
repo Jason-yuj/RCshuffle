@@ -20,12 +20,6 @@ def pre_process():
     global true_frequency
     global B
     global size
-    true_frequency = np.zeros(B)
-    true_counter = collections.Counter(data)
-    for i in range(0, B):
-        if i in true_counter.keys():
-            true_frequency[i] += true_counter[i]
-    # calculate the total number of counter
     size = int((branch * B - 1) / (branch - 1))
 
 
@@ -65,7 +59,7 @@ def analyzer():
         opt_frequency[i - 1] = t * (opt_frequency[(i - 1)])
         for j in range(0, branch):
             opt_frequency[i - 1] += opt_frequency[branch * (i - 1) + j + 1]
-    for i in range(1, size):
+    for i in range(1, size+1):
         level = 0
         cur = 0.0
         while cur < i:
@@ -177,14 +171,14 @@ if __name__ == '__main__':
     parser.add_argument('--rep', type=int)
     opt = parser.parse_args()
     # test = 0.0
-    branch = 4
-    # B = opt.B
-    B = 1024
-    # n = opt.n
-    n = 10000000
+    branch = 2
+    B = opt.B
+    # B = 1024
+    n = opt.n
+    # n = 10000000
     delta = 1 / (n * n)
-    # eps = opt.epi
-    eps = 5
+    eps = opt.epi
+    # eps = 5
 
     number_msg = 0
     messages = []
@@ -203,7 +197,7 @@ if __name__ == '__main__':
         file_name = "./netflix.txt"
     else:
         file_name = "./uniform.txt"
-    load_data("../Data/uniform.txt")
+    load_data(file_name)
 
     # if in_file == "AOL" or in_file == "netflix":
     #     distinct = set(data)
@@ -233,20 +227,15 @@ if __name__ == '__main__':
     # print(messages)
     analyzer()
     # print(opt_frequency)
-    expected_msg = 1 + 2 * sample_prob * size
+    expected_msg = 1 + (2 * size - 1) * sample_prob
     # print(expected_msg)
     error = []
     data.sort()
     for l in tqdm(range(domain)):
         for h in range(l + 1, domain):
             noise_result = range_query(l, h)
-            # true_2 = checker(l, h)
             true = true_result(l, h)
-            # print(l,h,noise_result,true)
-            # if noise_result != true:
-            #     print(l, h, noise_result, true)
             error.append(abs(noise_result - true))
-            # print(l, h, noise_result, true)
     # print(opt_frequency)
     # print(error)
     global error_1
@@ -262,7 +251,7 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    out_file = open("../log/Small1D/newOPTs/" + str(4) + "_" + str(2) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt",
+    out_file = open("./log/Small1D/newOPTs/" + str(opt.rep) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + "_2.txt",
                     'w')
     print_info(out_file)
     print("finish")
