@@ -199,18 +199,19 @@ if __name__ == '__main__':
         file_name = "./uniform.txt"
     load_data(file_name)
 
-    # if in_file == "AOL" or in_file == "netflix":
-    #     distinct = set(data)
-    #     domain = len(distinct)
-    #     B = pow(branch, math.ceil(math.log(domain) / math.log(branch)))
-    #     n = len(data)
-    # else:
-    #     domain = opt.B
-    #     B = opt.B
-    distinct = set(data)
-    domain = len(distinct)
-    B = pow(branch, math.ceil(math.log(domain) / math.log(branch)))
-    n = len(data)
+    if in_file == "AOL" or in_file == "netflix":
+        distinct = set(data)
+        domain = len(distinct)
+        B = pow(branch, math.ceil(math.log(domain) / math.log(branch)))
+        n = len(data)
+    else:
+        domain = opt.B
+        B = opt.B
+        n = len(data)
+    # distinct = set(data)
+    # domain = len(distinct)
+    # B = pow(branch, math.ceil(math.log(domain) / math.log(branch)))
+    # n = len(data)
     delta_s = delta / (math.log(B, branch) + 1)
     eps_s = eps / (math.log(B, branch) + 1)
     mu_1 = 32 * math.log(2 / delta_s) / (eps_s * eps_s)
@@ -251,7 +252,7 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    out_file = open("./log/Small1D/newOPTs/" + str(opt.rep) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + "_2.txt",
+    out_file = open("./log/Small1D/newOPTs/" + str(opt.rep) + str(opt.dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + "_2.txt",
                     'w')
     print_info(out_file)
     print("finish")
