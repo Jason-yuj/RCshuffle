@@ -3,6 +3,7 @@ import collections
 import math
 from bisect import bisect_right, bisect_left
 
+import multiprocessing
 import numpy as np
 from tqdm import tqdm
 
@@ -23,27 +24,43 @@ def pre_process():
     size = int((branch * B - 1) / (branch - 1))
 
 
+def sub_process(i, data, p):
+    global messages
+    np.random.seed(i)
+    msg = []
+    for d in tqdm(data):
+        local_msg = local_randomizer(d, p)
+        msg.extend(local_msg)
+    messages[i] = msg
+
+
 def local_randomizer(x, p):
     global number_msg
     global messages
     global branch
     global size
-    messages.append(size - B + x)
+    local_messages = [size - B + x]
     noise_msg_1 = np.random.binomial(1, p, size=size)
     noise_msg_1 = np.where(noise_msg_1 == 1)[0]
     noise_msg_2 = noise_msg_1[noise_msg_1 != 0]
     noise_msg_2 = (noise_msg_2 // branch - (noise_msg_2 % branch == 0))
     noise_msg_2 = noise_msg_2[noise_msg_2 >= 0]
-    messages += noise_msg_1.tolist()
-    messages += noise_msg_2.tolist()
-    return
+    local_messages.extend(noise_msg_1.tolist())
+    local_messages.extend(noise_msg_2.tolist())
+    return local_messages
 
 
 def analyzer():
     global opt_frequency
     global messages
+    global total_msg
     opt_frequency = np.zeros(size)
-    fe_counter = collections.Counter(messages)
+    total_msg = []
+    for i in messages.values():
+        # print(len(i))
+        total_msg.extend(i)
+    opt_frequency = np.zeros(size)
+    fe_counter = collections.Counter(total_msg)
     for i in range(0, size):
         if i in fe_counter.keys():
             opt_frequency[i] += fe_counter[i]
@@ -140,7 +157,7 @@ def print_info(file):
 
     file.write("expected number of message / user:" + str(expected_msg) + "\n")
     # file.write("read number of message :" + str(number_msg) + "\n")
-    file.write("real number of message / user:" + str(len(messages) / n) + "\n")
+    file.write("real number of message / user:" + str(len(total_msg) / n) + "\n")
 
     file.write("Linf error:" + str(error_5) + "\n")
     file.write("50\% error:" + str(error_1) + "\n")
@@ -162,6 +179,9 @@ if __name__ == '__main__':
     global test
     global domain
     global size
+    global messages
+    global total_msg
+    multiprocessing.set_start_method("fork")
     parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
     parser.add_argument('--n', type=int, help='total number of user')
     parser.add_argument('--B', '--b', type=int, help='domain range, B << n')
@@ -223,8 +243,26 @@ if __name__ == '__main__':
     # mu_1 = sample_prob * n
     print(sample_prob)
     print("initialize")
-    for j in tqdm(range(n)):
-        local_randomizer(data[j], sample_prob)
+    process_num = 5
+    index = n // 5
+    result = []
+    manager = multiprocessing.Manager()
+    messages = manager.dict()
+    for i in range(process_num):
+        # Try to make  parameters locally
+        if i < process_num - 1:
+            left = index * i
+            right = index * (i + 1)
+        else:
+            left = index * i
+            right = n
+        # print(i, left, right)
+        messages[i] = []
+        local_data = data[left:right]
+        result.append(multiprocessing.Process(target=sub_process, args=(i, local_data, sample_prob)))
+        result[i].start()
+    for i in range(process_num):
+        result[i].join()
     # print(messages)
     analyzer()
     # print(opt_frequency)
