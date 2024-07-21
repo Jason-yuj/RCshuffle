@@ -26,7 +26,7 @@ def pre_process():
 
 def sub_process(i, data, p):
     global messages
-    np.random.seed(i)
+    np.random.seed()
     msg = []
     for d in tqdm(data):
         local_msg = local_randomizer(d, p)

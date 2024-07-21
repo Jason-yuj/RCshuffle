@@ -25,7 +25,7 @@ def pre_process():
 
 def sub_process(i, data, p):
     global messages
-    np.random.seed(i)
+    np.random.seed()
     msg = []
     for d in tqdm(data):
         local_msg = local_randomizer(d, p)
@@ -55,7 +55,7 @@ def analyzer():
     total_msg = []
     rqt_frequency = np.zeros(size)
     for i in messages.values():
-        # print(len(i))
+        print(len(i))
         total_msg.extend(i)
     rqt_frequency = np.zeros(size)
     fe_counter = collections.Counter(total_msg)
