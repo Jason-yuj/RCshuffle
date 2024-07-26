@@ -62,6 +62,93 @@ def get_result(dataset, n, eps, B, type):
     out_file.close()
 
 
+def get_central(dataset, n, eps, B):
+    # 50
+    error1_1 = []
+    # 90
+    error1_2 = []
+    # 95
+    error1_3 = []
+    # 99
+    error1_4 = []
+    # 100
+    error1_5 = []
+    # avg
+    error1_6 = []
+    # 50
+    error2_1 = []
+    # 90
+    error2_2 = []
+    # 95
+    error2_3 = []
+    # 99
+    error2_4 = []
+    # 100
+    error2_5 = []
+    # avg
+    error2_6 = []
+    for i in range(30):
+        log_file = "./Small1D/central/" + str(i) + "_" + str(dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(
+            eps) + ".txt"
+        # --d --q --r --c --o --debug
+        file = open(log_file, 'r')
+        a = file.readlines()
+        error1_5.append(float(a[3].split(":")[1]))
+        error1_1.append(float(a[4].split(":")[1]))
+        error1_2.append(float(a[5].split(":")[1]))
+        error1_3.append(float(a[6].split(":")[1]))
+        error1_4.append(float(a[7].split(":")[1]))
+        error1_6.append(float(a[8].split(":")[1]))
+        error2_5.append(float(a[9].split(":")[1]))
+        error2_1.append(float(a[10].split(":")[1]))
+        error2_2.append(float(a[11].split(":")[1]))
+        error2_3.append(float(a[12].split(":")[1]))
+        error2_4.append(float(a[13].split(":")[1]))
+        error2_6.append(float(a[14].split(":")[1]))
+        file.close()
+    error1_1.sort()
+    error1_2.sort()
+    error1_3.sort()
+    error1_4.sort()
+    error1_5.sort()
+    error1_6.sort()
+    error2_1.sort()
+    error2_2.sort()
+    error2_3.sort()
+    error2_4.sort()
+    error2_5.sort()
+    error2_6.sort()
+    error150 = np.average(error1_1[3:27])
+    error190 = np.average(error1_2[3:27])
+    error195 = np.average(error1_3[3:27])
+    error199 = np.average(error1_4[3:27])
+    error1100 = np.average(error1_5[3:27])
+    erroravg1 = np.average(error1_6[3:27])
+    error250 = np.average(error2_1[3:27])
+    error290 = np.average(error2_2[3:27])
+    error295 = np.average(error2_3[3:27])
+    error299 = np.average(error2_4[3:27])
+    error2100 = np.average(error2_5[3:27])
+    erroravg2 = np.average(error2_6[3:27])
+    out_file = open(
+        "./Result/" + "central_" + str(dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(
+            eps) + ".txt",
+        'w')
+    out_file.write("pureDP Linf error:" + str(error1100) + "\n")
+    out_file.write("pureDP 50\% error:" + str(error150) + "\n")
+    out_file.write("pureDP 90\% error:" + str(error190) + "\n")
+    out_file.write("pureDP 95\% error:" + str(error195) + "\n")
+    out_file.write("pureDP 99\% error:" + str(error199) + "\n")
+    out_file.write("pureDP average error:" + str(erroravg1) + "\n")
+    out_file.write("approxDP Linf error:" + str(error2100) + "\n")
+    out_file.write("approxDP 50\% error:" + str(error250) + "\n")
+    out_file.write("approxDP 90\% error:" + str(error290) + "\n")
+    out_file.write("approxDP 95\% error:" + str(error295) + "\n")
+    out_file.write("approxDP 99\% error:" + str(error299) + "\n")
+    out_file.write("approxDP average error:" + str(erroravg2) + "\n")
+    out_file.close()
+
+
 def get_n():
     n_list = ["1000000", "10000000", "100000000"]
     B = "1024"
@@ -110,4 +197,4 @@ def get_real():
 
 
 if __name__ == "__main__":
-    get_B()
+    get_central("gaussian", "1000000", "10.0", "1024")
