@@ -1,3 +1,5 @@
+import argparse
+
 import numpy as np
 from math import log2, pow, log, floor
 
@@ -240,6 +242,25 @@ def post_dataCube():
     return fe_counter
 
 
+def print_info(file):
+    file.write("epsilon:" + str(eps) + "\n")
+    file.write("delta:" + str(delta) + "\n")
+    file.write("number of participants:" + str(n) + "\n")
+    # file.write("domain size:" + str(B) + "\n")
+    file.write("mu:" + str(mu_1) + "\n")
+    file.write("dataset:" + "uniform" + "\n")
+
+    # file.write("expected number of message / user:" + str(expected_msg) + "\n")
+    # file.write("read number of message :" + str(number_msg) + "\n")
+    file.write("real number of message / user:" + str(t / n) + "\n")
+
+    file.write("Linf error:" + str(error_5) + "\n")
+    file.write("50\% error:" + str(error_1) + "\n")
+    file.write("90\% error:" + str(error_2) + "\n")
+    file.write("95\% error:" + str(error_3) + "\n")
+    file.write("99\% error:" + str(error_4) + "\n")
+    file.write("average error:" + str(error_6) + "\n")
+
 
 if __name__ == '__main__':
     global tree
@@ -251,8 +272,13 @@ if __name__ == '__main__':
     global attri
     global mu_1
     global d
+    parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
+    parser.add_argument('--epi', type=float, default=5, help='privacy budget')
+    parser.add_argument('--rep', type=int)
+    opt = parser.parse_args()
     n = 1e7
-    eps = 5
+    # eps = 5
+    eps = opt.epi
     delta = 1 / (n * n)
     attri = [8, 8, 4, 4]
     L = {(0, 1, 2, 3), (1, 2, 3), (0, 1, 2), (0, 1, 3), (0, 2, 3), (0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3), (1,),
@@ -296,7 +322,7 @@ if __name__ == '__main__':
     load_data("filename")
     print("initialize")
     messages = []
-    for dt in tqdm(data):
+    for dt in data:
         msg_l = local_randomizer(dt, sample_prob, cells)
         messages += msg_l
     t = len(messages)
@@ -313,5 +339,10 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    print(error_1, error_2, error_3, error_4, error_5, error_6)
-    print(t, t / n)
+    out_file = open(
+        "./log/Cube/CubeFE/" + str(opt.rep) + "_eps=" + str(eps) + ".txt", 'w')
+    print_info(out_file)
+    print("finish")
+    out_file.close()
+    # print(error_1, error_2, error_3, error_4, error_5, error_6)
+    # print(t, t / n)

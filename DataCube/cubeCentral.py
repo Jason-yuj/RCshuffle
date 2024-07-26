@@ -1,3 +1,5 @@
+import argparse
+
 import numpy as np
 from math import log2, pow, log, floor, sqrt
 
@@ -238,6 +240,26 @@ def post_dataCube(cube):
     return noise_cube
 
 
+def print_info(file):
+    file.write("epsilon:" + str(eps) + "\n")
+    file.write("delta:" + str(delta) + "\n")
+    # file.write("domain size:" + str(B) + "\n")
+
+    file.write("pureDP Linf error:" + str(error1_5) + "\n")
+    file.write("pureDP 50\% error:" + str(error1_1) + "\n")
+    file.write("pureDP 90\% error:" + str(error1_2) + "\n")
+    file.write("pureDP 95\% error:" + str(error1_3) + "\n")
+    file.write("pureDP 99\% error:" + str(error1_4) + "\n")
+    file.write("pureDP average error:" + str(error1_6) + "\n")
+
+    file.write("approxDP Linf error:" + str(error2_5) + "\n")
+    file.write("approxDP 50\% error:" + str(error2_1) + "\n")
+    file.write("approxDP 90\% error:" + str(error2_2) + "\n")
+    file.write("approxDP 95\% error:" + str(error2_3) + "\n")
+    file.write("approxDP 99\% error:" + str(error2_4) + "\n")
+    file.write("approxDP average error:" + str(error2_6) + "\n")
+
+
 if __name__ == '__main__':
     global pure_dp_cube
     global L_pre_level
@@ -248,8 +270,13 @@ if __name__ == '__main__':
     global attri
     global d
     global counter
+    parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
+    parser.add_argument('--epi', type=float, default=5, help='privacy budget')
+    parser.add_argument('--rep', type=int)
+    opt = parser.parse_args()
     n = 1e7
-    eps = 10
+    # eps = 10
+    eps = opt.epi
     delta = 1 / (n * n)
     attri = [8, 8, 4, 4]
     L = {(0, 1, 2, 3), (1, 2, 3), (0, 1, 2), (0, 1, 3), (0, 2, 3), (0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3), (1,),
@@ -308,7 +335,7 @@ if __name__ == '__main__':
     error1_4 = error1[int(len(error1) * 0.99)]
     error1_5 = max(error1)
     error1_6 = np.average(error1)
-    print("pure", error1_1, error1_2, error1_3, error1_4, error1_5, error1_6)
+    # print("pure", error1_1, error1_2, error1_3, error1_4, error1_5, error1_6)
     error2.sort()
     error2_1 = error2[int(len(error2) * 0.5)]
     error2_2 = error2[int(len(error2) * 0.9)]
@@ -316,4 +343,8 @@ if __name__ == '__main__':
     error2_4 = error2[int(len(error2) * 0.99)]
     error2_5 = max(error2)
     error2_6 = np.average(error2)
-    print("approx", error2_1, error2_2, error2_3, error2_4, error2_5, error2_6)
+    # print("approx", error2_1, error2_2, error2_3, error2_4, error2_5, error2_6)
+    out_file = open("../log/Cube/central/" + str(opt.rep) + "_" + "eps=" + str(eps) + ".txt", 'w')
+    print_info(out_file)
+    out_file.close()
+    print('finish')

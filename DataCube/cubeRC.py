@@ -1,3 +1,5 @@
+import argparse
+
 import numpy as np
 from math import log2, pow, log, floor
 
@@ -86,7 +88,7 @@ def load_data(filename):
     file = open("../Data/cube.txt", 'r')
     data = []
     a = file.readlines()
-    for i in tqdm(a):
+    for i in a:
         d = i.strip().split()
         data.append((int(d[0]), int(d[1]), int(d[2]), int(d[3])))
 
@@ -156,7 +158,6 @@ def local_randomizer(x, p, cells):
                     for j in cuboid:
                         parent[j] = cell[j]
                     msg.append(tuple(parent))
-
     return msg
 
 
@@ -260,6 +261,25 @@ def post_dataCube():
     return tree
 
 
+def print_info(file):
+    file.write("epsilon:" + str(eps) + "\n")
+    file.write("delta:" + str(delta) + "\n")
+    file.write("number of participants:" + str(n) + "\n")
+    # file.write("domain size:" + str(B) + "\n")
+    file.write("mu:" + str(mu_1) + "\n")
+    file.write("dataset:" + "uniform" + "\n")
+
+    # file.write("expected number of message / user:" + str(expected_msg) + "\n")
+    # file.write("read number of message :" + str(number_msg) + "\n")
+    file.write("real number of message / user:" + str(t / n) + "\n")
+
+    file.write("Linf error:" + str(error_5) + "\n")
+    file.write("50\% error:" + str(error_1) + "\n")
+    file.write("90\% error:" + str(error_2) + "\n")
+    file.write("95\% error:" + str(error_3) + "\n")
+    file.write("99\% error:" + str(error_4) + "\n")
+    file.write("average error:" + str(error_6) + "\n")
+
 
 if __name__ == '__main__':
     global tree
@@ -271,8 +291,13 @@ if __name__ == '__main__':
     global attri
     global mu_1
     global d
+    parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
+    parser.add_argument('--epi', type=float, default=5, help='privacy budget')
+    parser.add_argument('--rep', type=int)
+    opt = parser.parse_args()
     n = 1e7
-    eps = 10
+    # eps = 10
+    eps = opt.epi
     delta = 1 / (n * n)
     attri = [8, 8, 4, 4]
     L = {(0, 1, 2, 3), (1, 2, 3), (0, 1, 2), (0, 1, 3), (0, 2, 3), (0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3), (1,),
@@ -320,7 +345,7 @@ if __name__ == '__main__':
         messages += msg_l
     t = len(messages)
     analyzer()
-    print("finish")
+    # print("finish")
     post_dataCube_true()
     post_dataCube()
     for i in all_cells:
@@ -332,5 +357,10 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    print(error_1, error_2, error_3, error_4, error_5, error_6)
-    print(t, t / n)
+    out_file = open(
+        "./log/Cube/CubeRC/" + str(opt.rep) + "_eps=" + str(eps) + "_2.txt",'w')
+    print_info(out_file)
+    print("finish")
+    out_file.close()
+    # print(error_1, error_2, error_3, error_4, error_5, error_6)
+    # print(t, t / n)
