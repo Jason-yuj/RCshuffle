@@ -1,3 +1,5 @@
+import argparse
+
 import numpy as np
 from math import log2, pow, log, sqrt
 
@@ -6,7 +8,7 @@ from tqdm import tqdm
 
 def load_data(filename):
     global data
-    file = open("../Data/2d_uniform.txt", 'r')
+    file = open("../Data/22d_uniform.txt", 'r')
     data = []
     a = file.readlines()
     for i in a:
@@ -83,15 +85,40 @@ class Tree2D:
         return result
 
 
+def print_info(file):
+    file.write("epsilon:" + str(eps) + "\n")
+    file.write("delta:" + str(delta) + "\n")
+    # file.write("domain size:" + str(B) + "\n")
+
+    file.write("pureDP Linf error:" + str(error1_5) + "\n")
+    file.write("pureDP 50\% error:" + str(error1_1) + "\n")
+    file.write("pureDP 90\% error:" + str(error1_2) + "\n")
+    file.write("pureDP 95\% error:" + str(error1_3) + "\n")
+    file.write("pureDP 99\% error:" + str(error1_4) + "\n")
+    file.write("pureDP average error:" + str(error1_6) + "\n")
+
+    file.write("approxDP Linf error:" + str(error2_5) + "\n")
+    file.write("approxDP 50\% error:" + str(error2_1) + "\n")
+    file.write("approxDP 90\% error:" + str(error2_2) + "\n")
+    file.write("approxDP 95\% error:" + str(error2_3) + "\n")
+    file.write("approxDP 99\% error:" + str(error2_4) + "\n")
+    file.write("approxDP average error:" + str(error2_6) + "\n")
+
+
 if __name__ == "__main__":
     global data
+    parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
+    parser.add_argument('--epi', type=float, default=5, help='privacy budget')
+    parser.add_argument('--rep', type=int)
+    opt = parser.parse_args()
     load_data("1")
 
     # print(tree.tree)
-    B = 32
+    B = 16
     n = 1e7
     delta = 1 / (n * n)
-    eps = 10
+    # eps = 10
+    eps = opt.epi
     delta_s = delta / pow(log2(B)+1, 2)
     eps_s = eps / pow(log2(B)+1, 2)
 
@@ -129,7 +156,7 @@ if __name__ == "__main__":
     error1_4 = error1[int(len(error1) * 0.99)]
     error1_5 = max(error1)
     error1_6 = np.average(error1)
-    print("pure", error1_1, error1_2, error1_3, error1_4, error1_5, error1_6)
+    # print("pure", error1_1, error1_2, error1_3, error1_4, error1_5, error1_6)
     error2.sort()
     error2_1 = error2[int(len(error2) * 0.5)]
     error2_2 = error2[int(len(error2) * 0.9)]
@@ -137,4 +164,8 @@ if __name__ == "__main__":
     error2_4 = error2[int(len(error2) * 0.99)]
     error2_5 = max(error2)
     error2_6 = np.average(error2)
-    print("approx", error2_1, error2_2, error2_3, error2_4, error2_5, error2_6)
+    # print("approx", error2_1, error2_2, error2_3, error2_4, error2_5, error2_6)
+    out_file = open("../log/Multi/central/" + str(1) + "_" + "eps=" + str(eps) + ".txt", 'w')
+    print_info(out_file)
+    out_file.close()
+    print('finish')

@@ -1,6 +1,9 @@
+import argparse
+
 import numpy as np
 from math import log2, pow, log, floor
 
+import multiprocessing
 from tqdm import tqdm
 
 
@@ -14,11 +17,32 @@ def load_data(filename):
         data.append((int(d[0]), int(d[1])))
 
 
+def sub_process(i, local, p):
+    global mu_1
+    global n
+    global collecter1
+    global collecter2
+    global t
+    global B
+    np.random.seed()
+    local_msg = 0
+    # sample_prob = mu_1 / n
+    local_tree = Tree2D(B, mu_1)
+    local_true = Tree2D(B, mu_1)
+    for v1, v2 in tqdm(local):
+        msg = local_tree.add(v1, v2, p)
+        local_true.true_add(v1, v2)
+        local_msg += msg
+    collecter1.append(local_tree)
+    collecter2.append(local_true)
+    t.value += local_msg
+
+
 class Tree2D:
     def __init__(self, n, mu):
         self.mu = mu
         self.n = n
-        self.tree = [[0] * (2 * self.n - 1) for _ in range(2 * self.n - 1)]
+        self.tree = np.array([[0] * (2 * self.n - 1) for _ in range(2 * self.n - 1)])
 
     def true_add(self, v1, v2):
         self.tree[v1 + self.n - 1][v2 + self.n - 1] += 1
@@ -119,16 +143,47 @@ class Tree2D:
                 result += self.tree[int(i)][int(j)]
         return result
 
+    def merge(self, othertree):
+        self.tree += othertree.tree
+
+
+def print_info(file):
+    file.write("epsilon:" + str(eps) + "\n")
+    file.write("delta:" + str(delta) + "\n")
+    file.write("number of participants:" + str(n) + "\n")
+    file.write("domain size:" + str(B) + "\n")
+    file.write("mu:" + str(mu_1) + "\n")
+    file.write("dataset:" + "uniform" + "\n")
+
+    # file.write("expected number of message / user:" + str(expected_msg) + "\n")
+    # file.write("read number of message :" + str(number_msg) + "\n")
+    file.write("real number of message / user:" + str(t.value / n) + "\n")
+
+    file.write("Linf error:" + str(error_5) + "\n")
+    file.write("50\% error:" + str(error_1) + "\n")
+    file.write("90\% error:" + str(error_2) + "\n")
+    file.write("95\% error:" + str(error_3) + "\n")
+    file.write("99\% error:" + str(error_4) + "\n")
+    file.write("average error:" + str(error_6) + "\n")
+
 
 if __name__ == "__main__":
     global data
+    global collecter1
+    global collecter2
+    global B
+    multiprocessing.set_start_method("fork")
+    parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
+    parser.add_argument('--epi', type=float, default=20, help='privacy budget')
+    parser.add_argument('--rep', type=int)
+    opt = parser.parse_args()
     load_data("1")
-
     # print(tree.tree)
     B = 32
-    n = 1e7
+    n = 1e8
     delta = 1 / (n * n)
-    eps = 10
+    # eps = 10
+    eps = opt.epi
     delta_s = delta / pow(log2(B)+1, 2)
     eps_s = eps / pow(log2(B)+1, 2)
     mu_1 = 32 * log(2 / delta_s) / (eps_s * eps_s)
@@ -137,17 +192,42 @@ if __name__ == "__main__":
     tree = Tree2D(B, mu_1)
     true = Tree2D(B, 1)
     print("initialize")
-    t = 0
+    # t = 0
     # tree.add(1, 1, 0.5)
-    for v1, v2 in tqdm(data):
-        msg = tree.add(v1, v2, sample_prob)
-        true.true_add(v1,v2)
-        t += msg
-    print(t)
+    # for v1, v2 in tqdm(data):
+    #     msg = tree.add(v1, v2, sample_prob)
+    #     true.true_add(v1,v2)
+    #     t += msg
+    process_num = 10
+    index = n // 10
+    result = []
+    manager = multiprocessing.Manager()
+    collecter1 = manager.list()
+    collecter2 = manager.list()
+    t = manager.Value(int, 0)
+    for i in range(process_num):
+        # Try to make  parameters locally
+        if i < process_num - 1:
+            left = index * i
+            right = index * (i + 1)
+        else:
+            left = index * i
+            right = n
+        # print(i, left, right)
+        # messages[i] = []
+        local_data = data[int(left):int(right)]
+        result.append(multiprocessing.Process(target=sub_process, args=(i, local_data, sample_prob)))
+        result[i].start()
+    for i in range(process_num):
+        result[i].join()
+
+    for i in range(process_num):
+        tree.merge(collecter1[i])
+        true.merge(collecter2[i])
     tree.build()
     true.true_build()
-    print(tree.tree[1])
-    print(true.tree[1])
+    # print(tree.tree[1])
+    # print(true.tree[1])
     error = []
     for r1 in range(B):
         for l1 in range(r1+1, B):
@@ -164,5 +244,9 @@ if __name__ == "__main__":
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    print(error_1, error_2, error_3, error_4, error_5, error_6)
-    print(t / n)
+    out_file = open(
+        "../log/Multi/MultiRC/" + str(1) + "_eps=" + str(eps) + ".txt", 'w')
+    print_info(out_file)
+    out_file.close()
+    # print(error_1, error_2, error_3, error_4, error_5, error_6)
+    # print(t / n)
