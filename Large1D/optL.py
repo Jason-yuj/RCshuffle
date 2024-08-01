@@ -233,14 +233,14 @@ def DomainReduction():
         #     potids[cur].remove(id)
         # freq_i = next_freq.copy()
         # next_freq = {}
-        print(cur, len(potids[cur]))
-        print(len(T))
+        # print(cur, len(potids[cur]))
+        # print(len(T))
         full = False
         cur += 1
     # return
     # for (level, pos) in T:
     #     print(level, pos, frequency[level][pos])
-    print(T)
+    # print(T)
     print(len(T))
     return T
 
@@ -369,7 +369,6 @@ def print_info(file):
     file.write("average error:" + str(error_6) + "\n")
 
 
-
 if __name__ == '__main__':
     np.set_printoptions(threshold=sys.maxsize)
     global messages
@@ -381,9 +380,7 @@ if __name__ == '__main__':
     global delta
     global s
     global t
-    global b
     global pf
-    global phi
     global mu
     global fen
     global rho
@@ -415,12 +412,13 @@ if __name__ == '__main__':
         n = 1e7
     eps = opt.epi
     delta = 1 / (n * n)
+    delta_s = delta / 2
     s = 0
     t = log2(B)
     c = 2.5
     beta = 0.1
     b = ceil(n / pow(log2(n), c))
-    mu = 97.9614
+    mu = 32 * log(2 / delta_s) / (eps * eps)
     # fixed
     phi = 2e4
     r = t - s + 1
@@ -440,7 +438,7 @@ if __name__ == '__main__':
         file_name = "./gaussian.txt"
     else:
         file_name = "./uniform.txt"
-    load_data(file_name)
+    load_data("../uniform.txt")
     pre_process()
     # print( math.log(25000, math.log2(n)))
     # heavy frequency threshold
@@ -464,7 +462,6 @@ if __name__ == '__main__':
     # second round for range counting
     global number_msg
     global messages_2
-    global next
     global small_frequency
     global error
     small_domain = domain_map_all(T)
@@ -477,8 +474,8 @@ if __name__ == '__main__':
     next = pow(2, ceil(log(b_1) / log(2)))
     delta_s = delta / log2(next)
     eps_s = eps_2 / log2(next)
-    # mu_1 = 32 * log(2 / delta_s) / (eps_s * eps_s)
-    mu_1 = 23.0713
+    mu_1 = 32 * log(2 / delta_s) / (eps_s * eps_s)
+    # mu_1 = 23.0713
     sample_prob = mu_1 / n
     messages_2 = []
     for i in tqdm(data):
@@ -518,7 +515,7 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    out_file = open("./log/optL_" + str(opt.dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
+    out_file = open("../log/Large1D/optL_" + str(opt.dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
     print_info(out_file)
     # print(error_1, error_3)
     print("finish")
