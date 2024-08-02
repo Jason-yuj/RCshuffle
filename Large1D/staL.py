@@ -1,5 +1,7 @@
 import argparse
 import collections
+import os
+import time
 from math import log, log2, ceil, floor
 from bisect import bisect_right, bisect_left
 
@@ -52,17 +54,18 @@ def sub_process_randomizer(i, local_data):
     global msg_num
     np.random.seed()
     msg = {}
+    # int(t) + 1
     for i in range(s, int(t) + 1):
         msg[i] = []
     for d in tqdm(local_data):
-        for l in range(s, int(t)):
+        for l in range(s, int(t) + 1):
             local_msg = local_randomizer(d, l)
             msg[l].extend(local_msg)
     for i in range(s, int(t) + 1):
         # if i < 3:
         #     print(len(msg[i]))
-        messages[i] += msg[i]
-        msg_num.value += len(msg[i])
+        messages[i] = msg
+        # msg_num.value += len(msg[i])
 
 
 def local_randomizer(x, l):
@@ -76,9 +79,9 @@ def local_randomizer(x, l):
     if domain_size < b:
         sample_prob = mu / n
         local_msg.append(x_p)
-        y = np.random.binomial(1, sample_prob)
-        if y:
-            local_msg.append(np.random.randint(0, domain_size))
+        y = np.random.binomial(1, sample_prob, size=domain_size)
+        noise_msg = np.where(y)[0]
+        local_msg.extend(noise_msg.tolist())
     else:
         q = levelq[l]
         u = np.random.randint(0, q - 1)
@@ -100,7 +103,7 @@ def local_randomizer(x, l):
 # def analyzer(l):
 #     pass
 def get_node(B, l, r):
-    global branch
+    branch = 2
     nodes = []
     start = l
     next = l + 1
@@ -127,23 +130,90 @@ def get_node(B, l, r):
             start = next
             index = next
             next += 1
-    # for (i, j, level, index) in segment:
-    #     nodes.append(int(((branch * pow(branch, level-1) - 1) / (branch - 1)) + index))
-    return segment
+    for (i, j, level, index) in segment:
+        nodes.append(int(((branch * pow(branch, level-1) - 1) / (branch - 1)) + index))
+    return nodes
+
+
+def quick_power(x, y, mod):
+    res = 1
+    while y:
+        if y & 1:
+            res = res * x % mod
+        x = x * x % mod
+        y >>= 1
+    return res
+
+
+def counter_all(level):
+    global messages
+    global levelq
+    global b
+    domain_size = int(pow(2, level))
+    i_frequency = np.zeros(domain_size)
+    if domain_size < b:
+        i_counter = collections.Counter(messages[level])
+        for i in range(0, domain_size):
+            if i in i_counter.keys():
+                i_frequency[i] += i_counter[i]
+    else:
+        q = levelq[level]
+        for m in messages[level]:
+            u = m[0]
+            v = m[1]
+            w = m[2]
+            invu = quick_power(u, q - 2, q)
+            start_id = invu * (w - v + q) % q
+            adding = invu * b % q
+            id = start_id
+
+            for j in range(0, ceil((q - 1 - w) / b), 1):
+                if 0 <= id < domain_size:
+                    i_frequency[id] += 1
+                id += adding
+                if id >= q:
+                    id -= q
+    return i_frequency.tolist()
+
+
+def analyzer():
+    global s
+    global t
+    global fe
+    for level in range(int(s), 10):
+        domain_size = pow(2, level)
+        if domain_size < b:
+            for i in range(domain_size):
+                loc = (int(((2 * pow(2, level - 1) - 1) / (2 - 1)) + i))
+                counter = total_msg[level].count(i)
+                # print(len(messages[level]), counter)
+                counter -= mu
+                # print(counter, mu)
+                fe[loc] = counter
+        else:
+            q = levelq[level]
+            i_fe = counter_all(level)
+            for i in range(domain_size):
+                counter = i_fe[i]
+                loc = (int(((2 * pow(2, level - 1) - 1) / (2 - 1)) + i))
+                rou = mu * b / n
+                collision_prob = 1.0 * (q / b) * (q % b + q - b) / (1.0 * q * (q - 1))
+                res = (counter - n * rou / b - n * collision_prob) / (1 - collision_prob)
+                fe[loc] = res
 
 
 def sub_process_query(i):
     global error
     np.random.seed()
     local_error = []
-    for _ in tqdm(range(0, 1)):
+    for _ in tqdm(range(0, 1000)):
         l = np.random.randint(0, B)
         h = np.random.randint(0, B)
         while h == l:
             h = np.random.randint(0, B)
         noise_result = range_query(l, h)
         true = true_result(l, h)
-        print(noise_result, true)
+        # print(noise_result, true)
         local_error.append(abs(noise_result-true))
     error.extend(local_error)
 
@@ -152,32 +222,12 @@ def range_query(l, h):
     global b
     global n
     global mu
-    global messages
+    global total_msg
+    global fe
     res = 0
-    segments = get_node(B, min(l, h), max(l, h))
-    for (i, j, level, index) in segments:
-        # print(level, index)
-        domain_size = pow(2, level)
-        if domain_size < b:
-            counter = messages[level].count(index)
-            # print(len(messages[level]), counter)
-            res += counter
-            print(counter, mu)
-            res -= mu
-        else:
-            q = levelq[level]
-            counter = 0
-            for m in messages[level]:
-                u = m[0]
-                v = m[1]
-                w = m[2]
-                if ((u * index + v) % q) % b == w:
-                    counter += 1
-            res += counter
-            rou = mu * b / n
-            collision_prob = 1.0 * (q / b) * (q % b + q - b) / (1.0 * q * (q - 1))
-            res = (res - n * rou / b - n * collision_prob) / (1 - collision_prob)
-        # print(level, index, res)
+    nodes = get_node(B, min(l, h), max(l, h))
+    for node in nodes:
+        res += fe[node]
     return res
 
 
@@ -245,10 +295,10 @@ if __name__ == '__main__':
     manager = multiprocessing.Manager()
     messages = manager.dict()
     msg_num = manager.Value(int, 0)
-    B = pow(2, 20)
-    n = 1e5
+    B = pow(2, 30)
+    n = 1e7
     # eps = opt.epi
-    eps = 10
+    eps = 20
     delta = 1 / (n * n)
     s = 0
     t = log2(B)
@@ -262,12 +312,15 @@ if __name__ == '__main__':
     # fixed
     print(mu * b / n, b)
     pre_process()
-    load_data("../uniform.txt")
-    process_num = 5
-    index = n // 5
+    # load_data("../uniform.txt")
+    process_num = 10
+    index = n // 10
     result = []
-    # manager = multiprocessing.Manager()
-    # messages = manager.dict()
+    global fe
+    fe = np.zeros(pow(2, 31))
+    # analyzer()
+    manager = multiprocessing.Manager()
+    messages = manager.dict()
     for i in range(process_num):
         # Try to make  parameters locally
         if i < process_num - 1:
@@ -284,16 +337,34 @@ if __name__ == '__main__':
     for i in range(process_num):
         result[i].join()
 
+    global total_msg
+    total_msg = {}
+    for i in range(s, int(t)+1):
+        total_msg[i] = []
+    for i in range(s, int(t) + 1):
+        for j in range(process_num):
+            total_msg[i].extend(messages[j][i])
+            msg_num.value += len(messages[j][i])
+
     # for i in range(3):
     #     print(len(messages[i]))
-    result2 = []
-    error = manager.list()
-    for i in range(process_num):
-        result2.append(multiprocessing.Process(target=sub_process_query, args=(i,)))
-        result2[i].start()
-    for i in range(process_num):
-        result2[i].join()
-
+    # result2 = []
+    # error = manager.list()
+    # for i in range(process_num):
+    #     result2.append(multiprocessing.Process(target=sub_process_query, args=(i,)))
+    #     result2[i].start()
+    # for i in range(process_num):
+    #     result2[i].join()
+    for i in range(10000):
+        l = np.random.randint(0, B)
+        h = np.random.randint(0, B)
+        while h == l:
+            h = np.random.randint(0, B)
+        noise_result = range_query(l, h)
+        true = true_result(l, h)
+        error.append(abs(noise_result - true))
+        # fe_counter = collections.Counter(total_msg[i])
+        # print(fe_counter)
     global error_1
     global error_2
     global error_3
@@ -308,8 +379,7 @@ if __name__ == '__main__':
     error_4 = error[int(len(error) * 0.99)]
     error_5 = max(error)
     error_6 = np.average(error)
-    out_file = open("../log/Large1D/optL_" + str(opt.dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt",
-                    'w')
+    out_file = open("../log/Large1D/staL/" + str(opt.rep) + "_eps=" + str(eps) + ".txt", 'w')
     print_info(out_file)
     # print(error_1, error_3)
     print("finish")
