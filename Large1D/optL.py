@@ -257,12 +257,12 @@ def domain_map_all(T):
     return small_domain
 
 
-def domain_map_single(small_domain, value, flag):
+def domain_map_single(small_domain_l, small_domain_r, value, flag):
     # flag is for finding left points
     if flag:
-        index = bisect_right(small_domain, value, key=lambda x: x[0]) - 1
+        index = bisect_right(small_domain_l, value) - 1
     else:
-        index = bisect_left(small_domain, value, key=lambda x: x[1])
+        index = bisect_left(small_domain_r, value)
     return index
 
 
@@ -478,8 +478,10 @@ if __name__ == '__main__':
     # mu_1 = 23.0713
     sample_prob = mu_1 / n
     messages_2 = []
+    small_domain_l = [d[0] for d in small_domain]
+    small_domain_r = [d[1] for d in small_domain]
     for i in tqdm(data):
-        index_i = domain_map_single(small_domain, i, 1)
+        index_i = domain_map_single(small_domain_l, small_domain_r, i, 1)
         randomizer_rc(index_i, sample_prob)
     analyzer()
     print(len(messages_2))
@@ -493,8 +495,8 @@ if __name__ == '__main__':
         while h == l:
             h = np.random.randint(0, B)
         # to small domain
-        small_l = domain_map_single(small_domain, min(l, h), 1)
-        small_h = domain_map_single(small_domain, max(l, h), 0)
+        small_l = domain_map_single(small_domain_l, small_domain_r, min(l, h), 1)
+        small_h = domain_map_single(small_domain_l, small_domain_r, max(l, h), 0)
         noise_result = range_query(small_l, small_h)
         true = true_result(l, h)
         # if i <= 10:
