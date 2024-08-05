@@ -58,7 +58,7 @@ def sub_process_randomizer(i, local_data):
     for i in range(s, int(t) + 1):
         msg[i] = []
     for d in tqdm(local_data):
-        for l in range(s, int(t) + 1):
+        for l in range(29, 30):
             local_msg = local_randomizer(d, l)
             msg[l].extend(local_msg)
     for i in range(s, int(t) + 1):
@@ -132,7 +132,7 @@ def get_node(B, l, r):
             next += 1
     for (i, j, level, index) in segment:
         nodes.append(int(((branch * pow(branch, level-1) - 1) / (branch - 1)) + index))
-    return nodes
+    return segment
 
 
 def quick_power(x, y, mod):
@@ -152,13 +152,15 @@ def counter_all(level):
     domain_size = int(pow(2, level))
     i_frequency = np.zeros(domain_size)
     if domain_size < b:
-        i_counter = collections.Counter(messages[level])
-        for i in range(0, domain_size):
-            if i in i_counter.keys():
-                i_frequency[i] += i_counter[i]
+        i_counter = collections.Counter(total_msg[level])
+        # print(i_counter)
+        # print(i_frequency)
+        for k in range(0, domain_size):
+            if k in i_counter.keys():
+                i_frequency[k] += i_counter[k]
     else:
         q = levelq[level]
-        for m in messages[level]:
+        for m in total_msg[level]:
             u = m[0]
             v = m[1]
             w = m[2]
@@ -206,7 +208,7 @@ def sub_process_query(i):
     global error
     np.random.seed()
     local_error = []
-    for _ in tqdm(range(0, 1000)):
+    for _ in tqdm(range(0, 10)):
         l = np.random.randint(0, B)
         h = np.random.randint(0, B)
         while h == l:
@@ -222,12 +224,32 @@ def range_query(l, h):
     global b
     global n
     global mu
-    global total_msg
-    global fe
+    global messages
     res = 0
-    nodes = get_node(B, min(l, h), max(l, h))
-    for node in nodes:
-        res += fe[node]
+    segments = get_node(B, min(l, h), max(l, h))
+    for (i, j, level, index) in segments:
+        # print(level, index)
+        domain_size = pow(2, level)
+        if domain_size < b:
+            counter = messages[level].count(index)
+            # print(len(messages[level]), counter)
+            res += counter
+            print(counter, mu)
+            res -= mu
+        else:
+            q = levelq[level]
+            counter = 0
+            for m in messages[level]:
+                u = m[0]
+                v = m[1]
+                w = m[2]
+                if ((u * index + v) % q) % b == w:
+                    counter += 1
+            # res += counter
+            rou = mu * b / n
+            collision_prob = 1.0 * (q / b) * (q % b + q - b) / (1.0 * q * (q - 1))
+            res += (counter - n * rou / b - n * collision_prob) / (1 - collision_prob)
+        # print(level, index, res)
     return res
 
 
@@ -312,13 +334,14 @@ if __name__ == '__main__':
     # fixed
     print(mu * b / n, b)
     pre_process()
-    # load_data("../uniform.txt")
+    load_data("../uniform.txt")
     process_num = 10
     index = n // 10
     result = []
-    global fe
-    fe = np.zeros(pow(2, 31))
+    # global fe
+    # fe = np.zeros(pow(2, 31))
     # analyzer()
+    start_time = time.time()
     manager = multiprocessing.Manager()
     messages = manager.dict()
     for i in range(process_num):
@@ -336,8 +359,9 @@ if __name__ == '__main__':
         result[i].start()
     for i in range(process_num):
         result[i].join()
-
-    global total_msg
+    end_time = time.time()
+    print(end_time - start_time)
+    # global total_msg
     total_msg = {}
     for i in range(s, int(t)+1):
         total_msg[i] = []
@@ -348,13 +372,13 @@ if __name__ == '__main__':
 
     # for i in range(3):
     #     print(len(messages[i]))
-    # result2 = []
-    # error = manager.list()
-    # for i in range(process_num):
-    #     result2.append(multiprocessing.Process(target=sub_process_query, args=(i,)))
-    #     result2[i].start()
-    # for i in range(process_num):
-    #     result2[i].join()
+    result2 = []
+    error = manager.list()
+    for i in range(process_num):
+        result2.append(multiprocessing.Process(target=sub_process_query, args=(i,)))
+        result2[i].start()
+    for i in range(process_num):
+        result2[i].join()
     for i in range(10000):
         l = np.random.randint(0, B)
         h = np.random.randint(0, B)
