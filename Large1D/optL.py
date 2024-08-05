@@ -363,28 +363,29 @@ def print_info(file):
     file.write("delta:" + str(delta) + "\n")
     file.write("number of participants:" + str(n) + "\n")
     file.write("large domain size:" + str(B) + "\n")
-    file.write("reduced small domain:" + str(next) + "\n")
+    file.write("reduced small domain:" + str(b_1) + "\n")
     # file.write("mu:" + str(mu_1) + "\n")
 
     # file.write("expected number of message / user:" + str(expected_msg) + "\n")
     # file.write("read number of message :" + str(number_msg) + "\n")
-    file.write("real number of message / user:" + str(number_msg / n) + "\n")
+    file.write("number of message / user for domain reduction:" + str(rd_msg / n) + "\n")
+    file.write("number of message / user for estimation:" + str((number_msg - rd_msg) / n) + "\n")
 
-    file.write("Linf error:" + str(error_5[0]) + "\n")
-    file.write("truncation error:" + str(error_5[1]) + "\n")
-    file.write("second error:" + str(error_5[2]) + "\n")
-    file.write("50\% error:" + str(error_1[0]) + "\n")
-    file.write("truncation error:" + str(error_1[1]) + "\n")
-    file.write("second error:" + str(error_1[2]) + "\n")
-    file.write("90\% error:" + str(error_2[0]) + "\n")
-    file.write("truncation error:" + str(error_2[1]) + "\n")
-    file.write("second error:" + str(error_2[2]) + "\n")
-    file.write("95\% error:" + str(error_3[0]) + "\n")
-    file.write("truncation error:" + str(error_3[1]) + "\n")
-    file.write("second error:" + str(error_3[2]) + "\n")
-    file.write("99\% error:" + str(error_4[0]) + "\n")
-    file.write("truncation error:" + str(error_4[1]) + "\n")
-    file.write("second error:" + str(error_4[2]) + "\n")
+    file.write("Linf error:" + str(total_error_5) + "\n")
+    file.write("Linf truncation error:" + str(trunc_error_5) + "\n")
+    file.write("Linf second error:" + str(estim_error_5) + "\n")
+    file.write("50\% error:" + str(total_error_1) + "\n")
+    file.write("50\% truncation error:" + str(trunc_error_1) + "\n")
+    file.write("50\% second error:" + str(estim_error_1) + "\n")
+    file.write("90\% error:" + str(total_error_2) + "\n")
+    file.write("90\% truncation error:" + str(trunc_error_2) + "\n")
+    file.write("90\% second error:" + str(estim_error_2) + "\n")
+    file.write("95\% error:" + str(total_error_3) + "\n")
+    file.write("95\% truncation error:" + str(trunc_error_3) + "\n")
+    file.write("95\% second error:" + str(estim_error_3) + "\n")
+    file.write("99\% error:" + str(total_error_4) + "\n")
+    file.write("99\% truncation error:" + str(trunc_error_4) + "\n")
+    file.write("99\% second error:" + str(estim_error_4) + "\n")
     # file.write("average error:" + str(error_6) + "\n")
 
 
@@ -435,13 +436,13 @@ if __name__ == '__main__':
     delta_s = delta / 2
     s = 0
     t = log2(B)
-    c = 2.5
+    c = 2
     beta = 0.1
     b = ceil(n / pow(log2(n), c))
     mu = 32 * log(2 / delta_s) / (eps * eps)
     print(pow(log(b), 3))
     # fixed
-    phi = 1e4
+    phi = 3500
     r = t - s + 1
     fen = n / (2 * r)
     print(n, r, fen)
@@ -479,15 +480,21 @@ if __name__ == '__main__':
     num = 0
     for i in range(s, int(t) + 1):
         num += len(messages[i])
+    global rd_msg
+    rd_msg = num
     print(num)
     T = DomainReduction()
     # second round for range counting
     global number_msg
     global messages_2
     global small_frequency
-    global error
+    global total_error
+    global trunc_error
+    global estim_error
     small_domain = domain_map_all(T)
-    error = []
+    total_error = []
+    trunc_error = []
+    estim_error = []
     b_1 = len(small_domain)
     # parameter for range counting
     eps_2 = opt.epi
@@ -511,8 +518,8 @@ if __name__ == '__main__':
     print("finish")
     data.sort()
     # range count
-    for i in range(20000):
-        l = np.random.randint(0, B)
+    for i in range(100000):
+        l = 1
         h = np.random.randint(0, B)
         while h == l:
             h = np.random.randint(0, B)
@@ -526,7 +533,9 @@ if __name__ == '__main__':
         # if i <= 10:
         #     print(l, h, small_l, small_h)
         #     print(noise_result, true, abs(noise_result - true))
-        error.append((abs(noise_result - true), abs(truncated_true-true), abs(noise_result - truncated_true)))
+        total_error.append(abs(noise_result - true))
+        trunc_error.append(abs(truncated_true-true))
+        estim_error.append(abs(noise_result - truncated_true))
     global error_1
     global error_2
     global error_3
@@ -534,12 +543,24 @@ if __name__ == '__main__':
     global error_5
     global error_6
     # print(np.where(error == max(error)))
-    error.sort(key=lambda x: x[0])
-    error_1 = error[int(len(error) * 0.5)]
-    error_2 = error[int(len(error) * 0.9)]
-    error_3 = error[int(len(error) * 0.95)]
-    error_4 = error[int(len(error) * 0.99)]
-    error_5 = error[-1]
+    total_error.sort()
+    total_error_1 = total_error[int(len(total_error) * 0.5)]
+    total_error_2 = total_error[int(len(total_error) * 0.9)]
+    total_error_3 = total_error[int(len(total_error) * 0.95)]
+    total_error_4 = total_error[int(len(total_error) * 0.99)]
+    total_error_5 = total_error[-1]
+    trunc_error.sort()
+    trunc_error_1 = trunc_error[int(len(trunc_error) * 0.5)]
+    trunc_error_2 = trunc_error[int(len(trunc_error) * 0.9)]
+    trunc_error_3 = trunc_error[int(len(trunc_error) * 0.95)]
+    trunc_error_4 = trunc_error[int(len(trunc_error) * 0.99)]
+    trunc_error_5 = trunc_error[-1]
+    estim_error.sort()
+    estim_error_1 = estim_error[int(len(estim_error) * 0.5)]
+    estim_error_2 = estim_error[int(len(estim_error) * 0.9)]
+    estim_error_3 = estim_error[int(len(estim_error) * 0.95)]
+    estim_error_4 = estim_error[int(len(estim_error) * 0.99)]
+    estim_error_5 = estim_error[-1]
     # error_6 = np.average(error)
     out_file = open("../log/Large1D/optL_" + str("gaussian") + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
     print_info(out_file)
