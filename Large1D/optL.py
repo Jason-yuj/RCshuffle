@@ -62,15 +62,22 @@ def randomizer_hhd(x):
     #     print(domain_size, x, x_p, check)
     # small domain
     if domain_size < b:
-        sample_msg = mu_l * domain_size / fen
-        fixed_msg = floor(sample_msg)
-        remaining_msg = sample_msg - fixed_msg
         if np.random.binomial(1, rho):
             messages[l].append(x_p)
-        send_msg = fixed_msg + np.random.binomial(1, remaining_msg)
-        for i in range(send_msg):
+        sample_msg = mu_l / fen
+        noise_msg_1 = np.random.binomial(1, sample_msg, size=domain_size)
+        noise_msg_1 = np.where(noise_msg_1)[0]
+        for i in noise_msg_1:
             if np.random.binomial(1, rho):
-                messages[l].append(np.random.randint(0, domain_size))
+                messages[l].append(i)
+        # fixed_msg = floor(sample_msg)
+        # remaining_msg = sample_msg - fixed_msg
+        # if np.random.binomial(1, rho):
+        #     messages[l].append(x_p)
+        # send_msg = fixed_msg + np.random.binomial(1, remaining_msg)
+        # for i in range(send_msg):
+        #     if np.random.binomial(1, rho):
+        #         messages[l].append(np.random.randint(0, domain_size))
     # large domain
     else:
         sample_msg = mu_l * b / fen
@@ -261,9 +268,11 @@ def domain_map_single(small_domain_l, small_domain_r, value, flag):
     # flag is for finding left points
     if flag:
         index = bisect_right(small_domain_l, value) - 1
+        value = small_domain_l[index]
     else:
         index = bisect_left(small_domain_r, value)
-    return index
+        value = small_domain_l[index]
+    return index, value
 
 
 def randomizer_rc(x, p):
@@ -361,12 +370,22 @@ def print_info(file):
     # file.write("read number of message :" + str(number_msg) + "\n")
     file.write("real number of message / user:" + str(number_msg / n) + "\n")
 
-    file.write("Linf error:" + str(error_5) + "\n")
-    file.write("50\% error:" + str(error_1) + "\n")
-    file.write("90\% error:" + str(error_2) + "\n")
-    file.write("95\% error:" + str(error_3) + "\n")
-    file.write("99\% error:" + str(error_4) + "\n")
-    file.write("average error:" + str(error_6) + "\n")
+    file.write("Linf error:" + str(error_5[0]) + "\n")
+    file.write("truncation error:" + str(error_5[1]) + "\n")
+    file.write("second error:" + str(error_5[2]) + "\n")
+    file.write("50\% error:" + str(error_1[0]) + "\n")
+    file.write("truncation error:" + str(error_1[1]) + "\n")
+    file.write("second error:" + str(error_1[2]) + "\n")
+    file.write("90\% error:" + str(error_2[0]) + "\n")
+    file.write("truncation error:" + str(error_2[1]) + "\n")
+    file.write("second error:" + str(error_2[2]) + "\n")
+    file.write("95\% error:" + str(error_3[0]) + "\n")
+    file.write("truncation error:" + str(error_3[1]) + "\n")
+    file.write("second error:" + str(error_3[2]) + "\n")
+    file.write("99\% error:" + str(error_4[0]) + "\n")
+    file.write("truncation error:" + str(error_4[1]) + "\n")
+    file.write("second error:" + str(error_4[2]) + "\n")
+    # file.write("average error:" + str(error_6) + "\n")
 
 
 if __name__ == '__main__':
@@ -391,7 +410,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
     parser.add_argument('--dataset', type=str, default='uniform',
                         help='input data set')
-    parser.add_argument('--epi', type=float, default=5, help='privacy budget')
+    parser.add_argument('--epi', type=float, default=10, help='privacy budget')
+    parser.add_argument('--rep', type=int)
     opt = parser.parse_args()
     # precomputed primes
     bertrand_primes = [
@@ -419,12 +439,14 @@ if __name__ == '__main__':
     beta = 0.1
     b = ceil(n / pow(log2(n), c))
     mu = 32 * log(2 / delta_s) / (eps * eps)
+    print(pow(log(b), 3))
     # fixed
-    phi = 2e4
+    phi = 1e4
     r = t - s + 1
     fen = n / (2 * r)
     print(n, r, fen)
     print(mu * b / fen)
+    # exit()
     # rho = (30 * r / phi) * math.log((phi * B / n) + (r * n / (phi * beta)))
     rho = min((30 * r / phi) * log(phi * B / n), (8 * r / phi) * log(r * n / (phi * beta)))
     in_file = opt.dataset
@@ -481,7 +503,7 @@ if __name__ == '__main__':
     small_domain_l = [d[0] for d in small_domain]
     small_domain_r = [d[1] for d in small_domain]
     for i in tqdm(data):
-        index_i = domain_map_single(small_domain_l, small_domain_r, i, 1)
+        index_i, _ = domain_map_single(small_domain_l, small_domain_r, i, 1)
         randomizer_rc(index_i, sample_prob)
     analyzer()
     print(len(messages_2))
@@ -489,20 +511,22 @@ if __name__ == '__main__':
     print("finish")
     data.sort()
     # range count
-    for i in range(10000):
+    for i in range(20000):
         l = np.random.randint(0, B)
         h = np.random.randint(0, B)
         while h == l:
             h = np.random.randint(0, B)
         # to small domain
-        small_l = domain_map_single(small_domain_l, small_domain_r, min(l, h), 1)
-        small_h = domain_map_single(small_domain_l, small_domain_r, max(l, h), 0)
+        small_l, truncated_l = domain_map_single(small_domain_l, small_domain_r, min(l, h), 1)
+        small_h, truncated_r = domain_map_single(small_domain_l, small_domain_r, max(l, h), 0)
+        # print(l, h, truncated_r, truncated_r)
         noise_result = range_query(small_l, small_h)
         true = true_result(l, h)
+        truncated_true = true_result(truncated_l, truncated_r)
         # if i <= 10:
         #     print(l, h, small_l, small_h)
         #     print(noise_result, true, abs(noise_result - true))
-        error.append(abs(noise_result - true))
+        error.append((abs(noise_result - true), abs(truncated_true-true), abs(noise_result - truncated_true)))
     global error_1
     global error_2
     global error_3
@@ -510,14 +534,14 @@ if __name__ == '__main__':
     global error_5
     global error_6
     # print(np.where(error == max(error)))
-    error.sort()
+    error.sort(key=lambda x: x[0])
     error_1 = error[int(len(error) * 0.5)]
     error_2 = error[int(len(error) * 0.9)]
     error_3 = error[int(len(error) * 0.95)]
     error_4 = error[int(len(error) * 0.99)]
-    error_5 = max(error)
-    error_6 = np.average(error)
-    out_file = open("../log/Large1D/optL_" + str(opt.dataset) + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
+    error_5 = error[-1]
+    # error_6 = np.average(error)
+    out_file = open("../log/Large1D/optL_" + str("gaussian") + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
     print_info(out_file)
     # print(error_1, error_3)
     print("finish")
