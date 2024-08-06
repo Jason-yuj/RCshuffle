@@ -285,6 +285,8 @@ def domain_map_single(small_domain_l, small_domain_r, value, flag):
 
 def sub_process(i, local, p):
     global messages_2
+    global small_domain_l
+    global small_domain_r
     np.random.seed()
     msg = []
     for d in tqdm(local):
@@ -392,7 +394,7 @@ def print_info(file):
     file.write("large domain size:" + str(B) + "\n")
     file.write("reduced small domain:" + str(b_1) + "\n")
     file.write("truncation threshold:" + str(phi) + "\n")
-    file.write("reduced domain:" + str(small_domain) + "\n")
+    # file.write("reduced domain:" + str(small_domain) + "\n")
     # file.write("mu:" + str(mu_1) + "\n")
 
     # file.write("expected number of message / user:" + str(expected_msg) + "\n")
@@ -437,6 +439,7 @@ if __name__ == '__main__':
     global true_frequency
     global levelq
     global bertrand_primes
+    multiprocessing.set_start_method("fork")
     parser = argparse.ArgumentParser(description='optimal small domain range counting for shuffle model')
     parser.add_argument('--dataset', type=str, default='uniform',
                         help='input data set')
@@ -467,7 +470,7 @@ if __name__ == '__main__':
     delta_s = delta / 2
     s = 0
     t = log2(B)
-    c = 2.5
+    c = 2
     beta = 0.1
     b = ceil(n / pow(log2(n), c))
     mu = 32 * log(2 / delta_s) / (eps_1 * eps_1)
@@ -538,6 +541,8 @@ if __name__ == '__main__':
     # mu_1 = 23.0713
     sample_prob = mu_1 / n
     # messages_2 = []
+    global small_domain_l
+    global small_domain_r
     small_domain_l = [d[0] for d in small_domain]
     small_domain_r = [d[1] for d in small_domain]
     process_num = 5
@@ -555,7 +560,7 @@ if __name__ == '__main__':
             right = n
         # print(i, left, right)
         messages_2[i] = []
-        local_data = data[left:right]
+        local_data = data[int(left):int(right)]
         result.append(multiprocessing.Process(target=sub_process, args=(i, local_data, sample_prob)))
         result[i].start()
     for i in range(process_num):
