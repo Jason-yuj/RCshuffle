@@ -1,6 +1,7 @@
 import argparse
 import collections
 from math import log, log2, ceil, floor
+import multiprocessing
 from bisect import bisect_right, bisect_left
 
 import sys
@@ -10,10 +11,17 @@ from tqdm import tqdm
 
 def load_data(filename):
     global data
+    global B
     file = open(filename, 'r')
     data = []
     a = file.readlines()
+    # random mapping
+    c = np.random.randint(0, B)
+    m = np.random.randint(0, B)
+    while m % 2 == 0:
+        m = np.random.randint(0, B)
     for i in a:
+        # data.append(int(((i + c) * m) % n))
         data.append(int(i))
 
 
@@ -275,24 +283,41 @@ def domain_map_single(small_domain_l, small_domain_r, value, flag):
     return index, value
 
 
+def sub_process(i, local, p):
+    global messages_2
+    np.random.seed()
+    msg = []
+    for d in tqdm(local):
+        index_i, _ = domain_map_single(small_domain_l, small_domain_r, d, 1)
+        local_msg = randomizer_rc(index_i, p)
+        msg.extend(local_msg)
+    messages_2[i] = msg
+
+
 def randomizer_rc(x, p):
     global next
     global messages_2
-    messages_2.append(next + x - 1)
+    local_msg = [next + x - 1]
     noise_msg_1 = np.random.binomial(1, p, size=2 * next - 1)
     noise_msg_1 = np.where(noise_msg_1 == 1)[0]
     noise_msg_2 = noise_msg_1[noise_msg_1 != 0]
     noise_msg_2 = ((noise_msg_2 + 1) // 2) - 1
-    messages_2 += noise_msg_1.tolist()
-    messages_2 += noise_msg_2.tolist()
+    local_msg += noise_msg_1.tolist()
+    local_msg += noise_msg_2.tolist()
+    return local_msg
 
 
 def analyzer():
     global small_frequency
     global messages_2
     global next
+    global total_msg
+    total_msg = []
+    for i in messages_2.values():
+        # print(len(i))
+        total_msg.extend(i)
     small_frequency = np.zeros(2 * next - 1)
-    fe_counter = collections.Counter(messages_2)
+    fe_counter = collections.Counter(total_msg)
     for i in range(0, 2 * next - 1):
         if i in fe_counter.keys():
             small_frequency[i] += fe_counter[i]
@@ -360,11 +385,14 @@ def true_result(l, h):
 
 def print_info(file):
     file.write("epsilon:" + str(eps) + "\n")
+    file.write("epsilon1:" + str(eps_1) + "\n")
+    file.write("epsilon2:" + str(eps_2) + "\n")
     file.write("delta:" + str(delta) + "\n")
     file.write("number of participants:" + str(n) + "\n")
     file.write("large domain size:" + str(B) + "\n")
     file.write("reduced small domain:" + str(b_1) + "\n")
     file.write("truncation threshold:" + str(phi) + "\n")
+    file.write("reduced domain:" + str(small_domain) + "\n")
     # file.write("mu:" + str(mu_1) + "\n")
 
     # file.write("expected number of message / user:" + str(expected_msg) + "\n")
@@ -439,13 +467,13 @@ if __name__ == '__main__':
     delta_s = delta / 2
     s = 0
     t = log2(B)
-    c = 2
+    c = 2.5
     beta = 0.1
     b = ceil(n / pow(log2(n), c))
     mu = 32 * log(2 / delta_s) / (eps_1 * eps_1)
     print(pow(log(b), 3))
     # fixed
-    phi = 3500
+    phi = 5000
     r = t - s + 1
     fen = n / (2 * r)
     print(n, r, fen)
@@ -502,21 +530,42 @@ if __name__ == '__main__':
     # parameter for range counting
     # round to the power of 2
     global next
+    global total_msg
     next = pow(2, ceil(log(b_1) / log(2)))
     delta_s = delta / log2(next)
     eps_s = eps_2 / log2(next)
     mu_1 = 32 * log(2 / delta_s) / (eps_s * eps_s)
     # mu_1 = 23.0713
     sample_prob = mu_1 / n
-    messages_2 = []
+    # messages_2 = []
     small_domain_l = [d[0] for d in small_domain]
     small_domain_r = [d[1] for d in small_domain]
-    for i in tqdm(data):
-        index_i, _ = domain_map_single(small_domain_l, small_domain_r, i, 1)
-        randomizer_rc(index_i, sample_prob)
+    process_num = 5
+    index = n // process_num
+    result = []
+    manager = multiprocessing.Manager()
+    messages_2 = manager.dict()
+    for i in range(process_num):
+        # Try to make  parameters locally
+        if i < process_num - 1:
+            left = index * i
+            right = index * (i + 1)
+        else:
+            left = index * i
+            right = n
+        # print(i, left, right)
+        messages_2[i] = []
+        local_data = data[left:right]
+        result.append(multiprocessing.Process(target=sub_process, args=(i, local_data, sample_prob)))
+        result[i].start()
+    for i in range(process_num):
+        result[i].join()
+    # for i in tqdm(data):
+    #     index_i, _ = domain_map_single(small_domain_l, small_domain_r, i, 1)
+    #     randomizer_rc(index_i, sample_prob)
     analyzer()
-    print(len(messages_2))
-    number_msg = num + len(messages_2)
+    print(len(total_msg))
+    number_msg = num + len(total_msg)
     print("finish")
     data.sort()
     # range count
@@ -564,7 +613,7 @@ if __name__ == '__main__':
     estim_error_4 = estim_error[int(len(estim_error) * 0.99)]
     estim_error_5 = estim_error[-1]
     # error_6 = np.average(error)
-    out_file = open("../log/Large1D/optL_" + str("gaussian") + "_B=" + str(B) + "_n=" + str(n) + "_eps=" + str(eps) + ".txt", 'w')
+    out_file = open("../log/Large1D/optL/" + str("uniform") + "_eps=" + str(eps) + ".txt", 'w')
     print_info(out_file)
     # print(error_1, error_3)
     print("finish")
