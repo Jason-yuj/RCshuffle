@@ -364,10 +364,11 @@ def print_info(file):
     file.write("number of participants:" + str(n) + "\n")
     file.write("large domain size:" + str(B) + "\n")
     file.write("reduced small domain:" + str(b_1) + "\n")
+    file.write("truncation threshold:" + str(phi) + "\n")
     # file.write("mu:" + str(mu_1) + "\n")
 
     # file.write("expected number of message / user:" + str(expected_msg) + "\n")
-    # file.write("read number of message :" + str(number_msg) + "\n")
+    file.write("reduced domain:" + str(small_domain) + "\n")
     file.write("number of message / user for domain reduction:" + str(rd_msg / n) + "\n")
     file.write("number of message / user for estimation:" + str((number_msg - rd_msg) / n) + "\n")
 
@@ -432,6 +433,8 @@ if __name__ == '__main__':
         B = pow(2, 30)
         n = 1e7
     eps = opt.epi
+    eps_1 = 8
+    eps_2 = eps - eps_1
     delta = 1 / (n * n)
     delta_s = delta / 2
     s = 0
@@ -439,7 +442,7 @@ if __name__ == '__main__':
     c = 2
     beta = 0.1
     b = ceil(n / pow(log2(n), c))
-    mu = 32 * log(2 / delta_s) / (eps * eps)
+    mu = 32 * log(2 / delta_s) / (eps_1 * eps_1)
     print(pow(log(b), 3))
     # fixed
     phi = 3500
@@ -497,7 +500,6 @@ if __name__ == '__main__':
     estim_error = []
     b_1 = len(small_domain)
     # parameter for range counting
-    eps_2 = opt.epi
     # round to the power of 2
     global next
     next = pow(2, ceil(log(b_1) / log(2)))
