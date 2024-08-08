@@ -21,8 +21,8 @@ def load_data(filename):
     while m % 2 == 0:
         m = np.random.randint(0, B)
     for i in a:
-        # data.append(int(((i + c) * m) % n))
-        data.append(int(i))
+        data.append(int(((int(i) + c) * m) % B))
+        # data.append(int(i))
 
 
 def pre_process():
@@ -204,15 +204,18 @@ def DomainReduction():
     # freq_i = {0: counter_single(0, 0)}
     # next_freq = {}
     full = False
-    while cur < t:
+    while cur <= t:
         potids[cur + 1] = []
-        t1 = 2 * len(potids[cur]) * b
-        t2 = pow(2, cur)
+        # t1 = 2 * len(potids[cur]) * b
+        # t2 = pow(2, cur)
         if 2 * len(potids[cur]) * b >= pow(2, cur):
             qryids = counter_all(cur + 1)
             full = True
         # next = []
         for id in potids[cur]:
+            if cur == t:
+                T.append((cur , id))
+                continue
             # freq = freq_i[id]
             # if freq >= threshold:
             if full:
@@ -265,7 +268,7 @@ def domain_map_all(T):
     small_domain = []
     for (level, pos) in T:
         start = pos*pow(2, t-level)
-        end = pos*pow(2, t-level) + pow(2, t-level)-1
+        end = pos*pow(2, t-level) + pow(2, t-level)
         small_domain.append((start, end))
     # sort by its starting point
     small_domain.sort(key=lambda x: x[0])
@@ -299,8 +302,11 @@ def sub_process(i, local, p):
 def randomizer_rc(x, p):
     global next
     global messages_2
+    global b_1
+    global removed_domain
     local_msg = [next + x - 1]
     noise_msg_1 = np.random.binomial(1, p, size=2 * next - 1)
+    noise_msg_1[removed_domain] = 0
     noise_msg_1 = np.where(noise_msg_1 == 1)[0]
     noise_msg_2 = noise_msg_1[noise_msg_1 != 0]
     noise_msg_2 = ((noise_msg_2 + 1) // 2) - 1
@@ -394,6 +400,7 @@ def print_info(file):
     file.write("large domain size:" + str(B) + "\n")
     file.write("reduced small domain:" + str(b_1) + "\n")
     file.write("truncation threshold:" + str(phi) + "\n")
+    file.write("expected number of message / user:" + str(expected_msg) + "\n")
     # file.write("reduced domain:" + str(small_domain) + "\n")
     # file.write("mu:" + str(mu_1) + "\n")
 
@@ -464,7 +471,7 @@ if __name__ == '__main__':
         B = pow(2, 30)
         n = 1e7
     eps = opt.epi
-    eps_1 = 8
+    eps_1 = 6
     eps_2 = eps - eps_1
     delta = 1 / (n * n)
     delta_s = delta / 2
@@ -476,7 +483,7 @@ if __name__ == '__main__':
     mu = 32 * log(2 / delta_s) / (eps_1 * eps_1)
     print(pow(log(b), 3))
     # fixed
-    phi = 5000
+    phi = 8000
     r = t - s + 1
     fen = n / (2 * r)
     print(n, r, fen)
@@ -535,14 +542,24 @@ if __name__ == '__main__':
     global next
     global total_msg
     next = pow(2, ceil(log(b_1) / log(2)))
-    delta_s = delta / log2(next)
-    eps_s = eps_2 / log2(next)
+    delta_s = delta / (log2(next) + 1)
+    eps_s = eps_2 / (log2(next) + 1)
     mu_1 = 32 * log(2 / delta_s) / (eps_s * eps_s)
     # mu_1 = 23.0713
     sample_prob = mu_1 / n
     # messages_2 = []
     global small_domain_l
     global small_domain_r
+    global expected_msg
+    global removed_domain
+    removed_domain = []
+    extra_domain = np.arange(next + b_1, 2 * next)
+    removed_domain.extend(extra_domain - 1)
+    while len(extra_domain) != 1:
+        if extra_domain[0] % 2 == 1:
+            extra_domain = extra_domain[1:]
+        extra_domain = np.unique(extra_domain // 2)
+        removed_domain.extend((extra_domain - 1).tolist())
     small_domain_l = [d[0] for d in small_domain]
     small_domain_r = [d[1] for d in small_domain]
     process_num = 5
@@ -569,13 +586,14 @@ if __name__ == '__main__':
     #     index_i, _ = domain_map_single(small_domain_l, small_domain_r, i, 1)
     #     randomizer_rc(index_i, sample_prob)
     analyzer()
+    expected_msg = 1 + (4 * next - 3) * sample_prob
     print(len(total_msg))
     number_msg = num + len(total_msg)
     print("finish")
     data.sort()
     # range count
     for i in range(100000):
-        l = 1
+        l = np.random.randint(0, B)
         h = np.random.randint(0, B)
         while h == l:
             h = np.random.randint(0, B)
@@ -618,7 +636,7 @@ if __name__ == '__main__':
     estim_error_4 = estim_error[int(len(estim_error) * 0.99)]
     estim_error_5 = estim_error[-1]
     # error_6 = np.average(error)
-    out_file = open("../log/Large1D/optL/" + str("uniform") + "_eps=" + str(eps) + ".txt", 'w')
+    out_file = open("../log/Large1D/optL/" + str("zipf0.5") + "_eps=" + str(eps) + "_shuffle1.5.txt", 'w')
     print_info(out_file)
     # print(error_1, error_3)
     print("finish")
